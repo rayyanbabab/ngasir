@@ -11,7 +11,6 @@ import { db } from "./db";
 function getBaseURL(): string {
   if (process.env.BETTER_AUTH_URL) {
     const url = process.env.BETTER_AUTH_URL;
-    // Ensure it has a protocol prefix
     if (url.startsWith("http://") || url.startsWith("https://")) return url;
     return `https://${url}`;
   }
@@ -21,8 +20,29 @@ function getBaseURL(): string {
   return "http://localhost:3000";
 }
 
+/**
+ * Build trusted origins list:
+ * - always includes localhost for dev
+ * - includes VERCEL_URL if available (preview & production deployments)
+ * - includes BETTER_AUTH_URL if set manually
+ */
+function getTrustedOrigins(): string[] {
+  const origins = ["http://localhost:3000"];
+
+  if (process.env.VERCEL_URL) {
+    origins.push(`https://${process.env.VERCEL_URL}`);
+  }
+  if (process.env.BETTER_AUTH_URL) {
+    const url = process.env.BETTER_AUTH_URL;
+    origins.push(url.startsWith("http") ? url : `https://${url}`);
+  }
+
+  return origins;
+}
+
 export const auth = betterAuth({
   baseURL: getBaseURL(),
+  trustedOrigins: getTrustedOrigins(),
   database: drizzleAdapter(db, {
     provider: "sqlite",
   }),

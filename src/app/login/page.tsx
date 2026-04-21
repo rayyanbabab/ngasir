@@ -84,7 +84,7 @@ export default function LoginPage() {
                   id="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="admin@ngasir.id"
+                  placeholder="Masukkan email Anda"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-background/60 h-10"

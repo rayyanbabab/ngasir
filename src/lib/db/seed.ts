@@ -1,20 +1,33 @@
 /**
  * Seed script — populates the database with initial data.
  *
- * Usage: npx tsx src/lib/db/seed.ts
+ * Usage (local):  DATABASE_URL=file:./ngasir.db npx tsx src/lib/db/seed.ts
+ * Usage (turso):  DATABASE_URL=libsql://... DATABASE_AUTH_TOKEN=... npx tsx src/lib/db/seed.ts
+ *
+ * Or just run: npm run db:seed
  */
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import "dotenv/config";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
 import { product, order, orderItem } from "./schema";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import * as schema from "./schema";
 
-// Create a direct DB connection for seeding
-const sqlite = new Database("ngasir.db");
-sqlite.pragma("journal_mode = WAL");
-sqlite.pragma("foreign_keys = ON");
-const db = drizzle(sqlite, { schema });
+const DATABASE_URL = process.env.DATABASE_URL;
+const DATABASE_AUTH_TOKEN = process.env.DATABASE_AUTH_TOKEN;
+
+if (!DATABASE_URL) {
+  console.error("❌ Missing DATABASE_URL environment variable.");
+  process.exit(1);
+}
+
+const client = createClient({
+  url: DATABASE_URL,
+  authToken: DATABASE_AUTH_TOKEN,
+});
+
+const db = drizzle(client, { schema });
 
 // Create auth instance for user creation
 const auth = betterAuth({
@@ -178,14 +191,13 @@ function makeOrderId(date: Date, seq: number): string {
 
 async function seed() {
   console.log("🌱 Seeding database...\n");
+  console.log(`📡 Target: ${DATABASE_URL}\n`);
 
   // 0. Clear old data (keep users/sessions)
   console.log("🗑️  Clearing old orders & products...");
-  sqlite.pragma("foreign_keys = OFF");
-  sqlite.exec("DELETE FROM order_item");
-  sqlite.exec('DELETE FROM "order"');
-  sqlite.exec("DELETE FROM product");
-  sqlite.pragma("foreign_keys = ON");
+  await db.delete(orderItem);
+  await db.delete(order);
+  await db.delete(product);
   console.log("   ✅ Cleared.\n");
 
   // 1. Create admin user
@@ -209,12 +221,12 @@ async function seed() {
   }
 
   // Get the user ID
-  const adminUser = db.select().from(schema.user).limit(1).all()[0];
+  const [adminUser] = await db.select().from(schema.user).limit(1);
 
   // 2. Insert products
   console.log("\n📦 Inserting products...");
   for (const p of PRODUCTS) {
-    db.insert(product).values(p).onConflictDoNothing().run();
+    await db.insert(product).values(p).onConflictDoNothing();
   }
   console.log(`   ✅ ${PRODUCTS.length} products inserted.`);
 
@@ -234,7 +246,8 @@ async function seed() {
     dateCounters[dateKey] = (dateCounters[dateKey] || 0) + 1;
     const orderId = makeOrderId(orderDate, dateCounters[dateKey]);
 
-    db.insert(order)
+    await db
+      .insert(order)
       .values({
         id: orderId,
         totalAmount: o.totalAmount,
@@ -244,19 +257,18 @@ async function seed() {
         createdAt,
         userId: adminUser?.id,
       })
-      .onConflictDoNothing()
-      .run();
+      .onConflictDoNothing();
 
     for (const item of o.items) {
-      db.insert(orderItem)
+      await db
+        .insert(orderItem)
         .values({
           orderId,
           productId: item.productId,
           quantity: item.quantity,
           priceAtSale: item.priceAtSale,
         })
-        .onConflictDoNothing()
-        .run();
+        .onConflictDoNothing();
     }
 
     const info =
@@ -274,12 +286,12 @@ async function seed() {
   console.log("  Email:    admin@ngasir.id");
   console.log("  Password: admin123");
 
-  sqlite.close();
+  client.close();
   process.exit(0);
 }
 
 seed().catch((err) => {
   console.error("❌ Seed failed:", err);
-  sqlite.close();
+  client.close();
   process.exit(1);
 });

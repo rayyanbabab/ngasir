@@ -40,8 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# database
+# database (local SQLite — not used in production)
 *.db
-*.db-journal
+*.db-shm
 *.db-wal
+*.db-journal
 /drizzle/

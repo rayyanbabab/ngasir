@@ -150,7 +150,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground">
-          © 2025 Ngasir · Semua hak dilindungi
+          © 2026 Ngasir · Semua hak dilindungi
         </p>
       </div>
     </div>

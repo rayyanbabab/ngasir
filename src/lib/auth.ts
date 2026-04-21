@@ -3,41 +3,46 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "./db";
 
 /**
- * Resolves the base URL automatically:
- * 1. BETTER_AUTH_URL (manual override, must include https://)
- * 2. VERCEL_URL (auto-injected by Vercel, always add https://)
- * 3. Fallback to localhost for local dev
+ * Resolves the base URL:
+ * 1. BETTER_AUTH_URL  — set this manually in Vercel env vars (recommended)
+ * 2. VERCEL_PROJECT_PRODUCTION_URL — auto-injected by Vercel (production domain)
+ * 3. VERCEL_URL — auto-injected by Vercel (per-deployment URL)
+ * 4. localhost fallback
  */
 function getBaseURL(): string {
-  if (process.env.BETTER_AUTH_URL) {
-    const url = process.env.BETTER_AUTH_URL;
-    if (url.startsWith("http://") || url.startsWith("https://")) return url;
-    return `https://${url}`;
+  const candidates = [
+    process.env.BETTER_AUTH_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_URL,
+  ];
+
+  for (const url of candidates) {
+    if (!url) continue;
+    return url.startsWith("http") ? url : `https://${url}`;
   }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
+
   return "http://localhost:3000";
 }
 
 /**
- * Build trusted origins list:
- * - always includes localhost for dev
- * - includes VERCEL_URL if available (preview & production deployments)
- * - includes BETTER_AUTH_URL if set manually
+ * Build a list of ALL trusted origins so BetterAuth accepts requests
+ * from any of our known domains (production alias, preview, localhost).
  */
 function getTrustedOrigins(): string[] {
-  const origins = ["http://localhost:3000"];
+  const origins = new Set<string>(["http://localhost:3000"]);
 
-  if (process.env.VERCEL_URL) {
-    origins.push(`https://${process.env.VERCEL_URL}`);
-  }
-  if (process.env.BETTER_AUTH_URL) {
-    const url = process.env.BETTER_AUTH_URL;
-    origins.push(url.startsWith("http") ? url : `https://${url}`);
+  const envVars = [
+    process.env.BETTER_AUTH_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_URL,
+  ];
+
+  for (const url of envVars) {
+    if (!url) continue;
+    origins.add(url.startsWith("http") ? url : `https://${url}`);
   }
 
-  return origins;
+  return Array.from(origins);
 }
 
 export const auth = betterAuth({

@@ -16,7 +16,8 @@ function getBaseURL(): string {
     process.env.VERCEL_URL,
   ];
 
-  for (const url of candidates) {
+  for (const raw of candidates) {
+    const url = raw?.trim();
     if (!url) continue;
     return url.startsWith("http") ? url : `https://${url}`;
   }
@@ -37,7 +38,8 @@ function getTrustedOrigins(): string[] {
     process.env.VERCEL_URL,
   ];
 
-  for (const url of envVars) {
+  for (const raw of envVars) {
+    const url = raw?.trim();
     if (!url) continue;
     origins.add(url.startsWith("http") ? url : `https://${url}`);
   }

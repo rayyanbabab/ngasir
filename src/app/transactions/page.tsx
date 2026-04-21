@@ -61,19 +61,20 @@ function PaymentBadge({ method }: { method: "CASH" | "QRIS" }) {
   );
 }
 
-// Parse "YYYY-MM-DD HH:MM:SS" as LOCAL date (no UTC shift)
-function parseLocalDate(createdAt: string): Date {
-  const s = createdAt.replace(" ", "T");
-  // If no timezone info, treat as local
-  return new Date(s.includes("Z") || s.includes("+") ? s : s);
+// DB menyimpan UTC tanpa timezone marker, tambah "Z" agar diparsing sebagai UTC
+function parseUTCDate(createdAt: string): Date {
+  return new Date(createdAt.replace(" ", "T") + "Z");
 }
 
-function toLocalDateStr(d: Date) {
-  return d.toLocaleDateString("sv-SE"); // "YYYY-MM-DD"
+// Konversi UTC Date ke WIB Date string "YYYY-MM-DD"
+function toWIBDateStr(d: Date): string {
+  const wib = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+  return wib.toISOString().slice(0, 10);
 }
 
-function todayStr() {
-  return toLocalDateStr(new Date());
+// "Hari ini" dalam WIB
+function todayWIBStr(): string {
+  return toWIBDateStr(new Date());
 }
 
 type FilterMethod = "Semua" | "CASH" | "QRIS";
@@ -109,15 +110,17 @@ export default function TransactionsPage() {
 
   // Compute date range from preset
   const activeDateRange = useMemo(() => {
-    const today = todayStr();
+    const today = todayWIBStr();
     if (datePreset === "Hari ini") return { from: today, to: today };
     if (datePreset === "7 Hari") {
-      const d = new Date(); d.setDate(d.getDate() - 6);
-      return { from: toLocalDateStr(d), to: today };
+      const d = new Date();
+      d.setDate(d.getDate() - 6);
+      return { from: toWIBDateStr(d), to: today };
     }
     if (datePreset === "30 Hari") {
-      const d = new Date(); d.setDate(d.getDate() - 29);
-      return { from: toLocalDateStr(d), to: today };
+      const d = new Date();
+      d.setDate(d.getDate() - 29);
+      return { from: toWIBDateStr(d), to: today };
     }
     if (datePreset === "Custom") return { from: dateFrom, to: dateTo };
     return null; // "Semua"
@@ -131,7 +134,8 @@ export default function TransactionsPage() {
 
       let matchDate = true;
       if (activeDateRange && (activeDateRange.from || activeDateRange.to)) {
-        const txDate = toLocalDateStr(parseLocalDate(tx.createdAt));
+        // Konversi createdAt UTC → WIB date string untuk perbandingan
+        const txDate = toWIBDateStr(parseUTCDate(tx.createdAt));
         if (activeDateRange.from && txDate < activeDateRange.from) matchDate = false;
         if (activeDateRange.to   && txDate > activeDateRange.to)   matchDate = false;
       }
@@ -146,10 +150,15 @@ export default function TransactionsPage() {
 
   function formatDateTime(createdAt: string) {
     try {
-      const d = parseLocalDate(createdAt);
-      const date = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
-      const time = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-      return { date, time };
+      // Parse sebagai UTC, lalu konversi ke WIB untuk display
+      const utcDate = parseUTCDate(createdAt);
+      const wibDate = new Date(utcDate.getTime() + 7 * 60 * 60 * 1000);
+      const date = wibDate.toLocaleDateString("id-ID", {
+        day: "2-digit", month: "short", timeZone: "UTC"
+      });
+      const hh = String(wibDate.getUTCHours()).padStart(2, "0");
+      const mm = String(wibDate.getUTCMinutes()).padStart(2, "0");
+      return { date, time: `${hh}:${mm}` };
     } catch {
       return { date: "-", time: createdAt };
     }
@@ -279,7 +288,7 @@ export default function TransactionsPage() {
             <input
               type="date"
               value={dateFrom}
-              max={dateTo || todayStr()}
+              max={dateTo || todayWIBStr()}
               onChange={(e) => setDateFrom(e.target.value)}
               className="h-7 rounded-lg border border-border/60 bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
@@ -288,7 +297,7 @@ export default function TransactionsPage() {
               type="date"
               value={dateTo}
               min={dateFrom}
-              max={todayStr()}
+              max={todayWIBStr()}
               onChange={(e) => setDateTo(e.target.value)}
               className="h-7 rounded-lg border border-border/60 bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />

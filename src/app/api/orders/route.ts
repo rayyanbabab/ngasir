@@ -13,7 +13,7 @@ async function getSession() {
  * Generate a human-readable order ID: TRX-YYYYMMDD-NNNN
  * e.g. TRX-20260421-0001, TRX-20260421-0002, ...
  */
-function generateOrderId(): string {
+async function generateOrderId(): Promise<string> {
   const now = new Date();
   const dateStr =
     String(now.getFullYear()) +
@@ -23,11 +23,10 @@ function generateOrderId(): string {
   const prefix = `TRX-${dateStr}-`;
 
   // Find the highest existing sequence number for today
-  const todayOrders = db
+  const todayOrders = await db
     .select({ id: order.id })
     .from(order)
-    .where(like(order.id, `${prefix}%`))
-    .all();
+    .where(like(order.id, `${prefix}%`));
 
   let maxNum = 0;
   for (const o of todayOrders) {
@@ -64,39 +63,39 @@ export async function GET(request: NextRequest) {
 
   const orders =
     conditions.length > 0
-      ? db
+      ? await db
           .select()
           .from(order)
           .where(and(...conditions))
           .orderBy(desc(order.createdAt))
-          .all()
-      : db.select().from(order).orderBy(desc(order.createdAt)).all();
+      : await db.select().from(order).orderBy(desc(order.createdAt));
 
   // Fetch items for each order
-  const ordersWithItems = orders.map((o) => {
-    const items = db
-      .select({
-        id: orderItem.id,
-        productId: orderItem.productId,
-        quantity: orderItem.quantity,
-        priceAtSale: orderItem.priceAtSale,
-        name: product.name,
-      })
-      .from(orderItem)
-      .leftJoin(product, eq(orderItem.productId, product.id))
-      .where(eq(orderItem.orderId, o.id))
-      .all();
+  const ordersWithItems = await Promise.all(
+    orders.map(async (o) => {
+      const items = await db
+        .select({
+          id: orderItem.id,
+          productId: orderItem.productId,
+          quantity: orderItem.quantity,
+          priceAtSale: orderItem.priceAtSale,
+          name: product.name,
+        })
+        .from(orderItem)
+        .leftJoin(product, eq(orderItem.productId, product.id))
+        .where(eq(orderItem.orderId, o.id));
 
-    return {
-      ...o,
-      itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
-      items: items.map((i) => ({
-        name: i.name || "Produk dihapus",
-        qty: i.quantity,
-        price: i.priceAtSale,
-      })),
-    };
-  });
+      return {
+        ...o,
+        itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
+        items: items.map((i) => ({
+          name: i.name || "Produk dihapus",
+          qty: i.quantity,
+          price: i.priceAtSale,
+        })),
+      };
+    })
+  );
 
   return NextResponse.json(ordersWithItems);
 }
@@ -125,11 +124,10 @@ export async function POST(request: NextRequest) {
     }> = [];
 
     for (const item of items) {
-      const [p] = db
+      const [p] = await db
         .select()
         .from(product)
-        .where(eq(product.id, item.productId))
-        .all();
+        .where(eq(product.id, item.productId));
 
       if (!p) {
         return NextResponse.json(
@@ -153,45 +151,39 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create order + items + decrement stock in a transaction
-    const result = db.transaction((tx) => {
-      // Create order
-      const [newOrder] = tx
-        .insert(order)
-        .values({
-          id: generateOrderId(),
-          totalAmount,
-          paymentMethod,
-          cashAmount: paymentMethod === "CASH" ? (cashAmount ?? null) : null,
-          status: "PAID",
-          userId: session.user.id,
-        })
-        .returning()
-        .all();
+    // Generate order ID
+    const orderId = await generateOrderId();
 
-      // Create order items
-      for (const oi of orderItems) {
-        tx.insert(orderItem)
-          .values({
-            orderId: newOrder.id,
-            productId: oi.productId,
-            quantity: oi.quantity,
-            priceAtSale: oi.priceAtSale,
-          })
-          .run();
+    // Create order
+    const [newOrder] = await db
+      .insert(order)
+      .values({
+        id: orderId,
+        totalAmount,
+        paymentMethod,
+        cashAmount: paymentMethod === "CASH" ? (cashAmount ?? null) : null,
+        status: "PAID",
+        userId: session.user.id,
+      })
+      .returning();
 
-        // Decrement stock
-        tx.update(product)
-          .set({ stock: sql`${product.stock} - ${oi.quantity}` })
-          .where(eq(product.id, oi.productId))
-          .run();
-      }
+    // Create order items and decrement stock
+    for (const oi of orderItems) {
+      await db.insert(orderItem).values({
+        orderId: newOrder.id,
+        productId: oi.productId,
+        quantity: oi.quantity,
+        priceAtSale: oi.priceAtSale,
+      });
 
-      return newOrder;
-    });
+      await db
+        .update(product)
+        .set({ stock: sql`${product.stock} - ${oi.quantity}` })
+        .where(eq(product.id, oi.productId));
+    }
 
     // Re-fetch order with items for response
-    const createdItems = db
+    const createdItems = await db
       .select({
         name: product.name,
         qty: orderItem.quantity,
@@ -199,12 +191,11 @@ export async function POST(request: NextRequest) {
       })
       .from(orderItem)
       .leftJoin(product, eq(orderItem.productId, product.id))
-      .where(eq(orderItem.orderId, result.id))
-      .all();
+      .where(eq(orderItem.orderId, newOrder.id));
 
     return NextResponse.json(
       {
-        ...result,
+        ...newOrder,
         items: createdItems.map((i) => ({
           name: i.name || "Produk dihapus",
           qty: i.qty,

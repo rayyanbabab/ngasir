@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { product } from "@/lib/db/schema";
-import { eq, like, and, sql } from "drizzle-orm";
+import { eq, like, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
 
   const products =
     conditions.length > 0
-      ? db.select().from(product).where(and(...conditions)).all()
-      : db.select().from(product).all();
+      ? await db.select().from(product).where(and(...conditions))
+      : await db.select().from(product);
 
   return NextResponse.json(products);
 }
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [newProduct] = db
+    const [newProduct] = await db
       .insert(product)
       .values({
         name: name.trim(),
@@ -66,8 +66,7 @@ export async function POST(request: NextRequest) {
         stock: Number(stock),
         category: category || "Lainnya",
       })
-      .returning()
-      .all();
+      .returning();
 
     return NextResponse.json(newProduct, { status: 201 });
   } catch (err) {

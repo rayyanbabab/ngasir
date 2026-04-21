@@ -47,7 +47,7 @@ export async function GET() {
   const yesterdayEndStr   = toUTCStr(yesterdayEndUTC);
 
   // ── Today stats ──
-  const todayOrders = db
+  const todayOrders = await db
     .select()
     .from(order)
     .where(
@@ -56,8 +56,7 @@ export async function GET() {
         lte(order.createdAt, todayEndStr),
         eq(order.status, "PAID")
       )
-    )
-    .all();
+    );
 
   const todaySales = todayOrders.reduce((sum, o) => sum + o.totalAmount, 0);
   const todayTransactions = todayOrders.length;
@@ -69,17 +68,16 @@ export async function GET() {
   let productsSold = 0;
   if (todayOrderIds.length > 0) {
     for (const orderId of todayOrderIds) {
-      const items = db
+      const items = await db
         .select({ quantity: orderItem.quantity })
         .from(orderItem)
-        .where(eq(orderItem.orderId, orderId))
-        .all();
+        .where(eq(orderItem.orderId, orderId));
       productsSold += items.reduce((sum, i) => sum + i.quantity, 0);
     }
   }
 
   // ── Yesterday stats (for comparison) ──
-  const yesterdayOrders = db
+  const yesterdayOrders = await db
     .select()
     .from(order)
     .where(
@@ -88,8 +86,7 @@ export async function GET() {
         lte(order.createdAt, yesterdayEndStr),
         eq(order.status, "PAID")
       )
-    )
-    .all();
+    );
 
   const yesterdaySales = yesterdayOrders.reduce((sum, o) => sum + o.totalAmount, 0);
   const yesterdayTransactions = yesterdayOrders.length;
@@ -100,11 +97,10 @@ export async function GET() {
 
   let yesterdayProductsSold = 0;
   for (const o of yesterdayOrders) {
-    const items = db
+    const items = await db
       .select({ quantity: orderItem.quantity })
       .from(orderItem)
-      .where(eq(orderItem.orderId, o.id))
-      .all();
+      .where(eq(orderItem.orderId, o.id));
     yesterdayProductsSold += items.reduce((sum, i) => sum + i.quantity, 0);
   }
 
@@ -148,7 +144,7 @@ export async function GET() {
     const dayStartStr = toUTCStr(dayStartUTC);
     const dayEndStr   = toUTCStr(dayEndUTC);
 
-    const dayOrders = db
+    const dayOrders = await db
       .select()
       .from(order)
       .where(
@@ -157,8 +153,7 @@ export async function GET() {
           lte(order.createdAt, dayEndStr),
           eq(order.status, "PAID")
         )
-      )
-      .all();
+      );
 
     // Label tanggal dalam WIB
     const dayWIB = new Date(dayStartUTC.getTime() + WIB_OFFSET_MS);
@@ -170,43 +165,42 @@ export async function GET() {
   }
 
   // ── Low stock products ──
-  const lowStock = db
+  const lowStock = await db
     .select()
     .from(product)
     .where(sql`${product.stock} < 10`)
-    .orderBy(product.stock)
-    .all();
+    .orderBy(product.stock);
 
   // ── Recent transactions ──
-  const recent = db
+  const recent = await db
     .select()
     .from(order)
     .orderBy(desc(order.createdAt))
-    .limit(5)
-    .all();
+    .limit(5);
 
-  const recentWithItems = recent.map((o) => {
-    const items = db
-      .select({ quantity: orderItem.quantity })
-      .from(orderItem)
-      .where(eq(orderItem.orderId, o.id))
-      .all();
+  const recentWithItems = await Promise.all(
+    recent.map(async (o) => {
+      const items = await db
+        .select({ quantity: orderItem.quantity })
+        .from(orderItem)
+        .where(eq(orderItem.orderId, o.id));
 
-    // Convert createdAt UTC → WIB untuk display
-    const utcDate = new Date(o.createdAt.replace(" ", "T") + "Z");
-    const wibDate = new Date(utcDate.getTime() + WIB_OFFSET_MS);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const createdAtWIB = `${pad(wibDate.getUTCHours())}:${pad(wibDate.getUTCMinutes())}`;
+      // Convert createdAt UTC → WIB untuk display
+      const utcDate = new Date(o.createdAt.replace(" ", "T") + "Z");
+      const wibDate = new Date(utcDate.getTime() + WIB_OFFSET_MS);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const createdAtWIB = `${pad(wibDate.getUTCHours())}:${pad(wibDate.getUTCMinutes())}`;
 
-    return {
-      id: o.id,
-      createdAt: createdAtWIB,
-      totalAmount: o.totalAmount,
-      paymentMethod: o.paymentMethod,
-      status: o.status,
-      itemCount: items.reduce((s, i) => s + i.quantity, 0),
-    };
-  });
+      return {
+        id: o.id,
+        createdAt: createdAtWIB,
+        totalAmount: o.totalAmount,
+        paymentMethod: o.paymentMethod,
+        status: o.status,
+        itemCount: items.reduce((s, i) => s + i.quantity, 0),
+      };
+    })
+  );
 
   return NextResponse.json({
     stats: {

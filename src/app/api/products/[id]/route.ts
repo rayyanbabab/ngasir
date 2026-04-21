@@ -35,12 +35,11 @@ export async function PUT(
       return NextResponse.json({ error: "Tidak ada field yang diupdate" }, { status: 400 });
     }
 
-    const [updated] = db
+    const [updated] = await db
       .update(product)
       .set(updateData)
       .where(eq(product.id, id))
-      .returning()
-      .all();
+      .returning();
 
     if (!updated) {
       return NextResponse.json({ error: "Produk tidak ditemukan" }, { status: 404 });
@@ -65,11 +64,10 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const [deleted] = db
+  const [deleted] = await db
     .delete(product)
     .where(eq(product.id, id))
-    .returning()
-    .all();
+    .returning();
 
   if (!deleted) {
     return NextResponse.json({ error: "Produk tidak ditemukan" }, { status: 404 });

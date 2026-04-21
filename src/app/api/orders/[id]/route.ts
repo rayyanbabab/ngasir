@@ -21,13 +21,13 @@ export async function GET(
 
   const { id } = await params;
 
-  const [o] = db.select().from(order).where(eq(order.id, id)).all();
+  const [o] = await db.select().from(order).where(eq(order.id, id));
 
   if (!o) {
     return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
   }
 
-  const items = db
+  const items = await db
     .select({
       id: orderItem.id,
       productId: orderItem.productId,
@@ -37,8 +37,7 @@ export async function GET(
     })
     .from(orderItem)
     .leftJoin(product, eq(orderItem.productId, product.id))
-    .where(eq(orderItem.orderId, o.id))
-    .all();
+    .where(eq(orderItem.orderId, o.id));
 
   return NextResponse.json({
     ...o,

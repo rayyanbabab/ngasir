@@ -65,6 +65,7 @@ export default function POSPage() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("Semua");
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showMobileCart, setShowMobileCart] = useState(false);
   const [cashInput, setCashInput] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"TUNAI" | "QRIS">("TUNAI");
   const [qrisReceived, setQrisReceived] = useState(false);
@@ -264,7 +265,8 @@ export default function POSPage() {
 
           {/* Product Grid */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {/* pb-28 on mobile to leave room for the sticky cart bar */}
+            <div className="p-4 pb-28 lg:pb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {filteredProducts.map((product) => {
                 const inCart = cart.find((i) => i.id === product.id);
                 const isOutOfStock = product.stock === 0;
@@ -320,8 +322,8 @@ export default function POSPage() {
           </div>
         </div>
 
-        {/* ──────────────── Right: Cart ──────────────── */}
-        <div className="flex flex-col w-full lg:w-[340px] xl:w-[380px] flex-none min-h-0 bg-card/50 backdrop-blur-sm">
+        {/* ──────────────── Right: Cart (desktop only) ──────────────── */}
+        <div className="hidden lg:flex flex-col w-[340px] xl:w-[380px] flex-none min-h-0 bg-card/50 backdrop-blur-sm">
           {/* Cart Header */}
           <div className="flex-none border-b border-border/50 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -438,6 +440,114 @@ export default function POSPage() {
             </Button>
           </div>
         </div>
+
+        {/* ──────────────── Mobile: Sticky Cart Bar ──────────────── */}
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/50 safe-area-bottom">
+          {cartCount > 0 ? (
+            <div className="flex items-center gap-3 px-4 py-3">
+              {/* Cart preview — tap to open cart sheet */}
+              <button
+                onClick={() => setShowMobileCart(true)}
+                className="flex-1 flex items-center gap-3 min-w-0 rounded-xl bg-muted/60 px-3 py-2 active:bg-muted transition-colors"
+              >
+                <div className="relative flex-none">
+                  <ShoppingCart className="h-5 w-5 text-emerald-500" />
+                  <span className="absolute -top-2.5 -right-2.5 bg-emerald-500 text-white text-[10px] rounded-full h-4.5 w-4.5 min-w-[1.125rem] flex items-center justify-center font-bold px-1">
+                    {cartCount}
+                  </span>
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-[11px] text-muted-foreground">{cartCount} item dipilih · ketuk untuk lihat</p>
+                  <p className="text-sm font-bold text-emerald-600 truncate">{formatRupiah(cartTotal)}</p>
+                </div>
+              </button>
+              {/* Bayar button */}
+              <Button
+                className="flex-none bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25 h-11 px-5 font-semibold"
+                onClick={() => setShowCheckout(true)}
+              >
+                Bayar
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 px-4 py-3.5 text-muted-foreground">
+              <ShoppingCart className="h-4 w-4 opacity-40" />
+              <span className="text-sm">Pilih produk untuk mulai transaksi</span>
+            </div>
+          )}
+        </div>
+
+        {/* ──────────────── Mobile: Cart Sheet (Dialog) ──────────────── */}
+        <Dialog open={showMobileCart} onOpenChange={setShowMobileCart}>
+          <DialogContent className="lg:hidden max-w-sm w-full flex flex-col max-h-[80vh]">
+            <DialogHeader className="flex-none">
+              <DialogTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4 text-emerald-500" />
+                  Keranjang
+                </div>
+                {cart.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { clearCart(); setShowMobileCart(false); }}
+                    className="h-7 text-xs text-muted-foreground hover:text-destructive px-2"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Kosongkan
+                  </Button>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            {/* Cart Items */}
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-2 py-2">
+              {cart.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 rounded-xl bg-background/60 border border-border/40 p-3"
+                >
+                  <div className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-muted text-lg">
+                    {CATEGORY_EMOJI[products.find((p) => p.id === item.id)?.category ?? ""] ?? "📦"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate">{item.name}</p>
+                    <p className="text-xs text-emerald-600 font-medium">{formatRupiah(item.price)}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="outline" size="icon" onClick={() => updateQty(item.id, -1)} className="h-7 w-7 rounded-lg border-border/50">
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                    <span className="text-sm font-bold w-5 text-center tabular-nums">{item.quantity}</span>
+                    <Button variant="outline" size="icon" onClick={() => updateQty(item.id, 1)} disabled={item.quantity >= item.stock} className="h-7 w-7 rounded-lg border-border/50">
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive">
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Footer */}
+            <div className="flex-none border-t border-border/40 pt-4 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal ({cartCount} item)</span>
+                <span className="font-medium">{formatRupiah(cartTotal)}</span>
+              </div>
+              <div className="flex justify-between font-bold">
+                <span>Total</span>
+                <span className="text-emerald-600 text-base">{formatRupiah(cartTotal)}</span>
+              </div>
+              <Button
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25 h-11"
+                onClick={() => { setShowMobileCart(false); setShowCheckout(true); }}
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                Lanjut Bayar · {formatRupiah(cartTotal)}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* ──────────────── Checkout Dialog ──────────────── */}
         <Dialog

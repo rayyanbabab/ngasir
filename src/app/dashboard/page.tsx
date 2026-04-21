@@ -11,7 +11,6 @@ import {
   ArrowRight,
   AlertTriangle,
   Clock,
-  CheckCircle2,
   Banknote,
   QrCode,
   Loader2,
@@ -299,8 +298,8 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="h-[280px] w-full">
-              {!mounted ? null : hourlySalesData.length > 0 ? (
+            <div className="h-[220px] sm:h-[280px] w-full overflow-hidden">
+              {!mounted ? null : hourlySalesData.some((d) => d.sales > 0) ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={hourlySalesData} barCategoryGap="20%">
                     <CartesianGrid
@@ -382,7 +381,7 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="h-[280px] w-full">
+            <div className="h-[220px] sm:h-[280px] w-full overflow-hidden">
               {mounted ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={monthlyTrendData}>
@@ -537,7 +536,7 @@ export default function DashboardPage() {
                     Transaksi Terakhir
                   </CardTitle>
                   <CardDescription className="text-sm">
-                    5 transaksi terbaru
+                    10 transaksi terbaru
                   </CardDescription>
                 </div>
               </div>
@@ -549,60 +548,57 @@ export default function DashboardPage() {
               </Link>
             </div>
           </CardHeader>
-          <CardContent className="pt-0 flex-1 overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/50 hover:bg-transparent">
-                  <TableHead className="text-sm font-medium h-8">ID</TableHead>
-                  <TableHead className="text-sm font-medium h-8">Waktu</TableHead>
-                  <TableHead className="text-sm font-medium text-right h-8">Item</TableHead>
-                  <TableHead className="text-sm font-medium text-right h-8">Total</TableHead>
-                  <TableHead className="text-sm font-medium text-center h-8">Metode</TableHead>
-                  <TableHead className="text-sm font-medium text-right h-8">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentTransactions.map((tx) => (
-                  <TableRow
-                    key={tx.id}
-                    className="border-border/30 hover:bg-muted/50 transition-colors"
-                  >
-                    <TableCell className="py-2.5">
-                      <span className="text-sm font-mono font-medium">{tx.id}</span>
-                    </TableCell>
-                    <TableCell className="py-2.5">
-                      <span className="text-sm text-muted-foreground">{formatTime(tx.createdAt)}</span>
-                    </TableCell>
-                    <TableCell className="text-right py-2.5">
-                      <span className="text-sm tabular-nums">{tx.itemCount} item</span>
-                    </TableCell>
-                    <TableCell className="text-right py-2.5">
-                      <span className="text-sm font-semibold tabular-nums">
-                        {formatRupiah(tx.totalAmount)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center py-2.5">
+          <CardContent className="pt-0 flex-1 flex flex-col min-h-0">
+            {/* Header row — hidden on mobile, shown on sm+ */}
+            <div className="hidden sm:grid sm:grid-cols-[1.8fr_0.9fr_0.9fr_1.5fr_1.1fr] px-1 pb-2 border-b border-border/50">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">ID</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Waktu</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">Item</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">Total</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">Metode</span>
+            </div>
+            {/* Body */}
+            <div className="flex-1 flex flex-col divide-y divide-border/30 min-h-0">
+              {recentTransactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="min-h-[44px] lg:flex-1 flex items-center px-1 hover:bg-muted/50 transition-colors rounded"
+                >
+                  {/* Mobile layout: 2-line (ID+time kiri, total+badge kanan) */}
+                  <div className="flex w-full items-center gap-2 sm:hidden py-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-mono font-semibold truncate">{tx.id}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatTime(tx.createdAt)} · {tx.itemCount} item
+                      </p>
+                    </div>
+                    <div className="flex-none flex flex-col items-end gap-1">
+                      <span className="text-sm font-bold tabular-nums">{formatRupiah(tx.totalAmount)}</span>
                       <PaymentBadge method={tx.paymentMethod} />
-                    </TableCell>
-                    <TableCell className="text-right py-2.5">
-                      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-xs px-2 py-0.5">
-                        <CheckCircle2 className="mr-1 h-3 w-3" />
-                        {tx.status === "PAID" ? "Lunas" : "Pending"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {recentTransactions.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm">
-                      Belum ada transaksi
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                    </div>
+                  </div>
+                  {/* Desktop layout: 5-column grid */}
+                  <div className="hidden sm:grid w-full grid-cols-[1.8fr_0.9fr_0.9fr_1.5fr_1.1fr] items-center">
+                    <span className="text-sm font-mono font-medium truncate pr-2">{tx.id}</span>
+                    <span className="text-sm text-muted-foreground tabular-nums">{formatTime(tx.createdAt)}</span>
+                    <span className="text-sm tabular-nums text-right">{tx.itemCount} item</span>
+                    <span className="text-sm font-semibold tabular-nums text-right">{formatRupiah(tx.totalAmount)}</span>
+                    <div className="flex justify-center">
+                      <PaymentBadge method={tx.paymentMethod} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {recentTransactions.length === 0 && (
+                <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+                  Belum ada transaksi
+                </div>
+              )}
+            </div>
           </CardContent>
+
         </Card>
+
       </div>
     </div>
   );

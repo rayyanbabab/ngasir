@@ -22,7 +22,9 @@ export async function GET() {
   const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
   const now = new Date();
 
-  // Helper: format Date ke "YYYY-MM-DD HH:MM:SS" dalam UTC (sesuai format DB)
+  // Helper: format Date ke "YYYY-MM-DD HH:MM:SS" dalam UTC
+  // SQLite/Turso datetime('now') menyimpan dengan SPASI, bukan "T"
+  // Contoh: "2026-04-21 07:16:00" — BUKAN "2026-04-21T07:16:00"
   function toUTCStr(d: Date): string {
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
@@ -110,30 +112,32 @@ export async function GET() {
     return Math.round(((current - previous) / previous) * 1000) / 10;
   }
 
-  // ── Hourly sales (today, per jam UTC — label dikonversi ke WIB) ──
+  // ── Hourly sales (today, per jam WIB) ──
+  // Konversi WIB → UTC untuk mencari data di DB:
+  //   WIB 00:00–06:59 = UTC 17:00–23:59 hari KEMARIN UTC  → datePrefix = tanggal todayStartUTC  (2026-04-20T)
+  //   WIB 07:00–23:59 = UTC 00:00–16:59 hari INI UTC      → datePrefix = tanggal todayMidnightWIB (2026-04-21T)
   const hourlySales: Array<{ hour: string; sales: number; transactions: number }> = [];
+  // Pre-compute date prefixes (sudah ada "T" di akhir dari toUTCStr().slice(0,11))
+  const datePrefixYesterdayUTC = toUTCStr(todayStartUTC).slice(0, 11);   // e.g. "2026-04-20T"
+  const datePrefixTodayUTC     = toUTCStr(todayMidnightWIB).slice(0, 11); // e.g. "2026-04-21T"
+
   for (let h = 0; h < 24; h++) {
-    // Jam h WIB = jam (h-7+24)%24 UTC
-    const hUTC = (h - 7 + 24) % 24;
+    const hUTC    = (h - 7 + 24) % 24;
     const hUTCStr = String(hUTC).padStart(2, "0");
-    // Tentukan tanggal UTC: jam 0–6 WIB = hari sebelumnya UTC, jam 7–23 WIB = hari ini UTC
-    const datePrefix = h < 7
-      ? toUTCStr(new Date(todayStartUTC.getTime() - 1)).slice(0, 11) // hari sebelumnya UTC
-      : toUTCStr(todayStartUTC).slice(0, 11);                        // hari ini UTC
-    const hourStart = `${datePrefix}${hUTCStr}:00:00`;
-    const hourEnd   = `${datePrefix}${hUTCStr}:59:59`;
+    const datePrefix = h < 7 ? datePrefixYesterdayUTC : datePrefixTodayUTC;
+    const hourStart  = `${datePrefix}${hUTCStr}:00:00`;
+    const hourEnd    = `${datePrefix}${hUTCStr}:59:59`;
 
     const hourOrders = todayOrders.filter(
       (o) => o.createdAt >= hourStart && o.createdAt <= hourEnd
     );
-    if (hourOrders.length > 0) {
-      hourlySales.push({
-        hour: `${String(h).padStart(2, "0")}:00`,
-        sales: hourOrders.reduce((s, o) => s + o.totalAmount, 0),
-        transactions: hourOrders.length,
-      });
-    }
+    hourlySales.push({
+      hour: `${String(h).padStart(2, "0")}:00`,
+      sales: hourOrders.reduce((s, o) => s + o.totalAmount, 0),
+      transactions: hourOrders.length,
+    });
   }
+
 
   // ── Monthly trend (last 30 days, per hari WIB) ──
   const monthlyTrend: Array<{ date: string; sales: number; transactions: number }> = [];
@@ -176,7 +180,7 @@ export async function GET() {
     .select()
     .from(order)
     .orderBy(desc(order.createdAt))
-    .limit(5);
+    .limit(10);
 
   const recentWithItems = await Promise.all(
     recent.map(async (o) => {

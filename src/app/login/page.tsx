@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Store, Eye, EyeOff, LogIn, ShieldCheck } from "lucide-react";
+import { Store, Eye, EyeOff, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -145,35 +145,7 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Demo hint */}
-            <div className="mt-5 rounded-xl border border-border/40 bg-muted/40 p-3.5 space-y-1">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Akun Demo
-              </div>
-              <div className="text-xs text-muted-foreground space-y-0.5">
-                <p>
-                  Email:{" "}
-                  <button
-                    type="button"
-                    onClick={() => setEmail("admin@ngasir.id")}
-                    className="font-mono font-semibold text-foreground hover:underline"
-                  >
-                    admin@ngasir.id
-                  </button>
-                </p>
-                <p>
-                  Password:{" "}
-                  <button
-                    type="button"
-                    onClick={() => setPassword("admin123")}
-                    className="font-mono font-semibold text-foreground hover:underline"
-                  >
-                    admin123
-                  </button>
-                </p>
-              </div>
-            </div>
+
           </CardContent>
         </Card>
 

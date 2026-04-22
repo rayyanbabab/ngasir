@@ -14,6 +14,7 @@ import {
   QrCode,
   CalendarDays,
   X,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -88,6 +90,7 @@ export default function TransactionsPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("Semua");
   const [filterMethod, setFilterMethod] = useState<FilterMethod>("Semua");
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [showExportSoon, setShowExportSoon] = useState(false);
 
   // Date filter
   const [datePreset, setDatePreset] = useState<DatePreset>("Semua");
@@ -199,7 +202,7 @@ export default function TransactionsPage() {
         <Button
           variant="outline"
           className="border-border/60 hover:bg-muted"
-          onClick={() => alert("Fitur ekspor akan segera hadir")}
+          onClick={() => setShowExportSoon(true)}
         >
           <Download className="mr-2 h-4 w-4" />
           Export CSV
@@ -579,6 +582,40 @@ export default function TransactionsPage() {
               </Button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* ── Export Coming Soon Dialog ── */}
+      <Dialog open={showExportSoon} onOpenChange={setShowExportSoon}>
+        <DialogContent className="max-w-sm text-center">
+          <DialogHeader>
+            <div className="flex flex-col items-center gap-3 py-4">
+              <div className="relative">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
+                  <Download className="h-8 w-8 text-blue-500" />
+                </div>
+                <div className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg">
+                  <Sparkles className="h-3 w-3 text-white" />
+                </div>
+              </div>
+              <div>
+                <DialogTitle className="text-lg">Export CSV</DialogTitle>
+                <DialogDescription className="mt-1.5 text-sm leading-relaxed">
+                  Fitur ekspor data transaksi ke file CSV sedang dalam pengembangan dan akan segera hadir.
+                </DialogDescription>
+              </div>
+              <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-0 px-3 py-1 text-xs font-semibold">
+                <Sparkles className="h-3 w-3 mr-1.5" />
+                Segera Hadir
+              </Badge>
+            </div>
+          </DialogHeader>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setShowExportSoon(false)}
+          >
+            Tutup
+          </Button>
         </DialogContent>
       </Dialog>
     </div>

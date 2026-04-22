@@ -51,16 +51,26 @@ const CATEGORY_EMOJI: Record<string, string> = {
   Lainnya: "📦",
 };
 
+function getLowStockThreshold(): number {
+  try {
+    const raw = localStorage.getItem("ngasir_settings");
+    if (!raw) return 10;
+    return parseInt(JSON.parse(raw).lowStockThreshold ?? "10", 10) || 10;
+  } catch {
+    return 10;
+  }
+}
+
 type StockStatus = "Aman" | "Rendah" | "Kritis";
 
-function getStockStatus(stock: number): StockStatus {
+function getStockStatus(stock: number, threshold = 10): StockStatus {
   if (stock <= 3) return "Kritis";
-  if (stock <= 9) return "Rendah";
+  if (stock < threshold) return "Rendah";
   return "Aman";
 }
 
-function StockBadge({ stock }: { stock: number }) {
-  const status = getStockStatus(stock);
+function StockBadge({ stock, threshold = 10 }: { stock: number; threshold?: number }) {
+  const status = getStockStatus(stock, threshold);
   if (status === "Kritis") {
     return (
       <Badge variant="destructive" className="text-xs px-2 py-0.5">
@@ -94,6 +104,7 @@ export default function InventoryPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [threshold, setThreshold] = useState(10);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -110,6 +121,7 @@ export default function InventoryPage() {
   }, []);
 
   useEffect(() => {
+    setThreshold(getLowStockThreshold());
     fetchProducts();
   }, [fetchProducts]);
 
@@ -117,19 +129,19 @@ export default function InventoryPage() {
     return inventory.filter((p) => {
       const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
       const matchStatus =
-        filterStatus === "Semua" || getStockStatus(p.stock) === filterStatus;
+        filterStatus === "Semua" || getStockStatus(p.stock, threshold) === filterStatus;
       return matchSearch && matchStatus;
     });
-  }, [inventory, search, filterStatus]);
+  }, [inventory, search, filterStatus, threshold]);
 
   const stats = useMemo(() => {
     const total = inventory.length;
-    const kritisCount = inventory.filter((p) => getStockStatus(p.stock) === "Kritis").length;
-    const rendahCount = inventory.filter((p) => getStockStatus(p.stock) === "Rendah").length;
-    const amanCount = inventory.filter((p) => getStockStatus(p.stock) === "Aman").length;
+    const kritisCount = inventory.filter((p) => getStockStatus(p.stock, threshold) === "Kritis").length;
+    const rendahCount = inventory.filter((p) => getStockStatus(p.stock, threshold) === "Rendah").length;
+    const amanCount = inventory.filter((p) => getStockStatus(p.stock, threshold) === "Aman").length;
     const totalValue = inventory.reduce((acc, p) => acc + p.price * p.stock, 0);
     return { total, kritisCount, rendahCount, amanCount, totalValue };
-  }, [inventory]);
+  }, [inventory, threshold]);
 
   function openAdd() {
     setEditingProduct(null);
@@ -377,7 +389,7 @@ export default function InventoryPage() {
                       <span className="text-sm font-bold tabular-nums">{product.stock}</span>
                     </TableCell>
                     <TableCell className="text-right py-3">
-                      <StockBadge stock={product.stock} />
+                      <StockBadge stock={product.stock} threshold={threshold} />
                     </TableCell>
                     <TableCell className="text-right py-3">
                       <div className="flex items-center justify-end gap-1">

@@ -1,5 +1,29 @@
 import { formatRupiah } from "./mock-data";
 
+const SETTINGS_KEY = "ngasir_settings";
+
+function getStoreName(): string {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return "Toko Pak Ahmad";
+    const parsed = JSON.parse(raw);
+    return parsed.storeName || "Toko Pak Ahmad";
+  } catch {
+    return "Toko Pak Ahmad";
+  }
+}
+
+function getOwnerName(): string {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return "";
+    const parsed = JSON.parse(raw);
+    return parsed.ownerName || "";
+  } catch {
+    return "";
+  }
+}
+
 export interface ReceiptData {
   id: string;
   time: string;
@@ -141,7 +165,8 @@ export function printReceipt(data: ReceiptData) {
 
   <div class="header">
     <div class="store-name">NGASIR POS</div>
-    <div class="store-sub">Toko Pak Ahmad</div>
+    <div class="store-sub">${getStoreName()}</div>
+    ${getOwnerName() ? `<div class="store-sub" style="margin-top:1px">${getOwnerName()}</div>` : ""}
     <div class="store-date">${dateStr} &middot; ${data.time}</div>
   </div>
 

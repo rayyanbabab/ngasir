@@ -10,11 +10,14 @@ async function getSession() {
 }
 
 // GET /api/dashboard — aggregated stats for the dashboard
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { searchParams } = new URL(request.url);
+  const lowStockThreshold = parseInt(searchParams.get("lowStockThreshold") ?? "10", 10);
 
   // ── Timezone setup ──
   // SQLite datetime('now') menyimpan waktu dalam UTC.
@@ -172,7 +175,7 @@ export async function GET() {
   const lowStock = await db
     .select()
     .from(product)
-    .where(sql`${product.stock} < 10`)
+    .where(sql`${product.stock} < ${lowStockThreshold}`)
     .orderBy(product.stock);
 
   // ── Recent transactions ──

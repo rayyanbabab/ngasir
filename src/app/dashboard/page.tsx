@@ -171,7 +171,13 @@ export default function DashboardPage() {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await fetch("/api/dashboard");
+      const threshold = (() => {
+        try {
+          const raw = localStorage.getItem("ngasir_settings");
+          return raw ? (JSON.parse(raw).lowStockThreshold ?? "10") : "10";
+        } catch { return "10"; }
+      })();
+      const res = await fetch(`/api/dashboard?lowStockThreshold=${threshold}`);
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -454,7 +460,7 @@ export default function DashboardPage() {
                     Peringatan Stok
                   </CardTitle>
                   <CardDescription className="text-sm">
-                    Stok menipis (&lt; 10 item)
+                    Stok menipis (&lt; {(() => { try { const r = localStorage.getItem("ngasir_settings"); return r ? (JSON.parse(r).lowStockThreshold ?? 10) : 10; } catch { return 10; } })()} item)
                   </CardDescription>
                 </div>
               </div>

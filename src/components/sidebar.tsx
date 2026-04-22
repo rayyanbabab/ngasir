@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 
 const navItems = [
@@ -47,8 +47,19 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = authClient.useSession();
+  const [ownerName, setOwnerName] = useState<string | null>(null);
 
-  const userName = session?.user?.name || "Pengguna";
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("ngasir_settings");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.ownerName) setOwnerName(parsed.ownerName);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const userName = ownerName || session?.user?.name || "Pengguna";
   const userInitials = userName
     .split(" ")
     .map((n) => n[0])

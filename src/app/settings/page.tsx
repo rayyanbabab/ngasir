@@ -74,10 +74,8 @@ export default function SettingsPage() {
 
   // Change password dialog
   const [showChangePassword, setShowChangePassword] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -107,7 +105,6 @@ export default function SettingsPage() {
   }
 
   function openChangePassword() {
-    setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
     setPasswordError("");
@@ -118,7 +115,7 @@ export default function SettingsPage() {
   async function handleChangePassword() {
     setPasswordError("");
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    if (!newPassword || !confirmPassword) {
       setPasswordError("Semua field harus diisi.");
       return;
     }
@@ -133,18 +130,15 @@ export default function SettingsPage() {
 
     setPasswordLoading(true);
     try {
-      const { error } = await authClient.changePassword({
-        currentPassword,
-        newPassword,
-        revokeOtherSessions: false,
+      const res = await fetch("/api/user/set-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword }),
       });
+      const data = await res.json();
 
-      if (error) {
-        setPasswordError(
-          error.message?.includes("Invalid password")
-            ? "Password lama salah."
-            : error.message || "Gagal mengganti password."
-        );
+      if (!res.ok) {
+        setPasswordError(data.error || "Gagal mengganti password.");
       } else {
         setPasswordSuccess(true);
         setTimeout(() => setShowChangePassword(false), 1800);
@@ -348,7 +342,7 @@ export default function SettingsPage() {
               <div>
                 <DialogTitle>Ganti Password</DialogTitle>
                 <DialogDescription className="text-xs mt-0.5">
-                  Masukkan password lama dan password baru Anda
+                  Masukkan password baru Anda
                 </DialogDescription>
               </div>
             </div>
@@ -365,28 +359,6 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div className="space-y-4 pt-1">
-              {/* Current password */}
-              <div className="space-y-1.5">
-                <Label htmlFor="cp-current">Password Lama</Label>
-                <div className="relative">
-                  <Input
-                    id="cp-current"
-                    type={showCurrent ? "text" : "password"}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrent((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
               {/* New password */}
               <div className="space-y-1.5">
                 <Label htmlFor="cp-new">Password Baru</Label>

@@ -7,8 +7,8 @@
  * Or just run: npm run db:seed
  */
 import "dotenv/config";
-import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import { product, order, orderItem } from "./schema";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -22,16 +22,12 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-const client = createClient({
-  url: DATABASE_URL,
-  authToken: DATABASE_AUTH_TOKEN,
-});
-
-const db = drizzle(client, { schema });
+const sql = neon(DATABASE_URL);
+const db = drizzle({ client: sql, schema });
 
 // Create auth instance for user creation
 const auth = betterAuth({
-  database: drizzleAdapter(db, { provider: "sqlite" }),
+  database: drizzleAdapter(db, { provider: "pg" }),
   emailAndPassword: { enabled: true },
 });
 
@@ -286,12 +282,10 @@ async function seed() {
   console.log("  Email:    admin@ngasir.id");
   console.log("  Password: admin123");
 
-  client.close();
   process.exit(0);
 }
 
 seed().catch((err) => {
   console.error("❌ Seed failed:", err);
-  client.close();
   process.exit(1);
 });

@@ -53,6 +53,7 @@ import {
   type Transaction,
 } from "@/lib/mock-data";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // Custom tooltip for charts
 function CustomBarTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
@@ -165,11 +166,15 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   const fetchDashboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const threshold = (() => {
         try {
@@ -178,16 +183,23 @@ export default function DashboardPage() {
         } catch { return "10"; }
       })();
       const res = await fetch(`/api/dashboard?lowStockThreshold=${threshold}`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
+      if (res.status === 401) {
+        router.push("/login");
+        return;
       }
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Gagal memuat data dashboard");
+      }
+      const json = await res.json();
+      setData(json);
     } catch (err) {
       console.error("Failed to fetch dashboard:", err);
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat memuat data");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     setMounted(true);
@@ -209,10 +221,31 @@ export default function DashboardPage() {
     day: "numeric",
   });
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold">{error || "Gagal memuat data dashboard"}</p>
+          <p className="text-xs text-muted-foreground mt-1">Silakan coba muat ulang halaman</p>
+        </div>
+        <Button
+          onClick={() => fetchDashboard()}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+          size="sm"
+        >
+          Coba Lagi
+        </Button>
       </div>
     );
   }

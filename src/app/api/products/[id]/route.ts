@@ -6,7 +6,9 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
 async function getSession() {
-  return auth.api.getSession({ headers: await headers() });
+  return auth.api.getSession({
+    headers: await headers(),
+  });
 }
 
 // PUT /api/products/[id] — update a product

@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Store,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -67,10 +68,18 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
     .toUpperCase()
     .slice(0, 2);
 
+  const [loggingOut, setLoggingOut] = useState(false);
+
   async function handleLogout() {
-    await authClient.signOut();
-    router.push("/login");
-    router.refresh();
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await authClient.signOut();
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      window.location.href = "/login";
+    }
   }
 
   return (
@@ -152,8 +161,14 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-destructive"
             onClick={handleLogout}
+            disabled={loggingOut}
+            title="Keluar (Logout)"
           >
-            <LogOut className="h-4 w-4" />
+            {loggingOut ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>

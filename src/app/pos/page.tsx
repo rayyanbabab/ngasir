@@ -137,7 +137,15 @@ export default function POSPage() {
   function updateQty(id: string, delta: number) {
     setCart((prev) =>
       prev
-        .map((i) => (i.id === id ? { ...i, quantity: i.quantity + delta } : i))
+        .map((i) =>
+          i.id === id
+            ? {
+                ...i,
+                // Clamp quantity: min 0 triggers removal below, max = stock
+                quantity: Math.min(Math.max(i.quantity + delta, 0), i.stock),
+              }
+            : i
+        )
         .filter((i) => i.quantity > 0)
     );
   }

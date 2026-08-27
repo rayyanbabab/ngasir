@@ -8,7 +8,9 @@ import { headers } from "next/headers";
 
 export async function POST(req: NextRequest) {
   // Verify session
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

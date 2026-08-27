@@ -16,6 +16,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -310,6 +311,22 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground">Tambah atau hapus akun kasir</p>
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                await authClient.signOut();
+              } finally {
+                window.location.href = "/login";
+              }
+            }}
+            className="flex w-full items-center justify-between py-3.5 text-left text-rose-600 dark:text-rose-400 hover:text-rose-700 text-sm transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              <p className="font-medium">Keluar dari Akun</p>
+            </div>
+            <ChevronRight className="h-4 w-4 opacity-50" />
           </button>
         </CardContent>
       </Card>

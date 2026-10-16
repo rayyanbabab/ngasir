@@ -11,6 +11,20 @@ import { db } from "./db";
  * 4. localhost fallback
  */
 function getBaseURL(): string {
+  // If running in Vercel, ignore localhost if accidentally set in BETTER_AUTH_URL
+  if (process.env.VERCEL) {
+    if (process.env.BETTER_AUTH_URL && !process.env.BETTER_AUTH_URL.includes("localhost")) {
+      const url = process.env.BETTER_AUTH_URL.trim();
+      return url.startsWith("http") ? url : `https://${url}`;
+    }
+    if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+      return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.trim()}`;
+    }
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL.trim()}`;
+    }
+  }
+
   const candidates = [
     process.env.BETTER_AUTH_URL,
     process.env.VERCEL_PROJECT_PRODUCTION_URL,
@@ -31,12 +45,18 @@ function getBaseURL(): string {
  * from any of our known domains (production alias, preview, localhost).
  */
 function getTrustedOrigins(): string[] {
-  const origins = new Set<string>(["http://localhost:3000"]);
+  const origins = new Set<string>([
+    "http://localhost:3000",
+    "https://*.vercel.app",
+    "https://ngasir-ten.vercel.app",
+    "https://ngasir-rayyanammar276-6852s-projects.vercel.app",
+  ]);
 
   const envVars = [
     process.env.BETTER_AUTH_URL,
     process.env.VERCEL_PROJECT_PRODUCTION_URL,
     process.env.VERCEL_URL,
+    process.env.NEXT_PUBLIC_APP_URL,
   ];
 
   for (const raw of envVars) {
@@ -49,6 +69,7 @@ function getTrustedOrigins(): string[] {
 }
 
 export const auth = betterAuth({
+  secret: process.env.BETTER_AUTH_SECRET || "aa06281fa897809220c125ddecfa33c58f0d555367b3c4534fb8a5654e207f86",
   baseURL: getBaseURL(),
   trustedOrigins: getTrustedOrigins(),
   database: drizzleAdapter(db, {

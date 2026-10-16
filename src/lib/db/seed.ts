@@ -15,7 +15,6 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import * as schema from "./schema";
 
 const DATABASE_URL = process.env.DATABASE_URL;
-const DATABASE_AUTH_TOKEN = process.env.DATABASE_AUTH_TOKEN;
 
 if (!DATABASE_URL) {
   console.error("❌ Missing DATABASE_URL environment variable.");

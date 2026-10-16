@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Store,
   Bell,
@@ -12,7 +12,6 @@ import {
   Eye,
   EyeOff,
   Users,
-  Sparkles,
   AlertCircle,
   CheckCircle2,
   Loader2,
@@ -35,8 +34,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { authClient } from "@/lib/auth-client";
 
 const SETTINGS_KEY = "ngasir_settings";
@@ -48,8 +45,8 @@ interface AppSettings {
 }
 
 const defaultSettings: AppSettings = {
-  storeName: "Toko Pak Ahmad",
-  ownerName: "Ahmad Hasanudin",
+  storeName: "Toko Kasir UMKM",
+  ownerName: "Pemilik Toko",
   lowStockThreshold: "10",
 };
 
@@ -65,13 +62,12 @@ function loadSettings(): AppSettings {
 }
 
 export default function SettingsPage() {
-  const [storeName, setStoreName] = useState(defaultSettings.storeName);
-  const [ownerName, setOwnerName] = useState(defaultSettings.ownerName);
+  const [storeName, setStoreName] = useState(() => loadSettings().storeName);
+  const [ownerName, setOwnerName] = useState(() => loadSettings().ownerName);
   const [lowStockThreshold, setLowStockThreshold] = useState(
-    defaultSettings.lowStockThreshold
+    () => loadSettings().lowStockThreshold
   );
   const [saved, setSaved] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
 
   // Change password dialog
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -85,14 +81,6 @@ export default function SettingsPage() {
 
   // Coming soon dialog
   const [showComingSoon, setShowComingSoon] = useState(false);
-
-  useEffect(() => {
-    const settings = loadSettings();
-    setStoreName(settings.storeName);
-    setOwnerName(settings.ownerName);
-    setLowStockThreshold(settings.lowStockThreshold);
-    setHydrated(true);
-  }, []);
 
   async function handleSave() {
     const settings: AppSettings = { storeName, ownerName, lowStockThreshold };
@@ -152,166 +140,181 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 max-w-4xl">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Pengaturan</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Konfigurasi toko dan preferensi aplikasi
+      <div className="pb-1 border-b border-zinc-200/70">
+        <h1 className="text-lg font-bold tracking-tight text-zinc-900 sm:text-xl">
+          Pengaturan Toko & Preferensi
+        </h1>
+        <p className="text-xs text-zinc-500 mt-0.5">
+          Identitas bisnis, parameter batas stok, dan keamanan akun kasir
         </p>
       </div>
 
       {/* Store Profile */}
-      <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10">
-              <Store className="h-4 w-4 text-emerald-500" />
+      <Card className="border border-zinc-200/80 bg-white shadow-sm">
+        <CardHeader className="pb-3 border-b border-zinc-100">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-100 text-zinc-700">
+              <Store className="h-4 w-4" />
             </div>
             <div>
-              <CardTitle className="text-base">Profil Toko</CardTitle>
-              <CardDescription className="text-sm">
-                Informasi dasar toko Anda
+              <CardTitle className="text-sm font-semibold text-zinc-900">
+                Profil Toko
+              </CardTitle>
+              <CardDescription className="text-xs text-zinc-500">
+                Informasi yang dicetak pada struk kasir dan judul aplikasi
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="store-name">Nama Toko</Label>
+        <CardContent className="space-y-4 pt-4">
+          <div className="space-y-1.5 max-w-md">
+            <Label htmlFor="store-name" className="text-xs font-medium text-zinc-700">
+              Nama Toko / Usaha
+            </Label>
             <Input
               id="store-name"
               value={storeName}
               onChange={(e) => setStoreName(e.target.value)}
-              placeholder="Nama toko Anda"
-              className="bg-background/60"
-              disabled={!hydrated}
+              placeholder="Contoh: Toko Berkah Jaya"
+              className="h-9 text-xs border-zinc-200"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="owner-name">Nama Pemilik</Label>
+          <div className="space-y-1.5 max-w-md">
+            <Label htmlFor="owner-name" className="text-xs font-medium text-zinc-700">
+              Nama Pemilik / Kasir
+            </Label>
             <Input
               id="owner-name"
               value={ownerName}
               onChange={(e) => setOwnerName(e.target.value)}
-              placeholder="Nama pemilik"
-              className="bg-background/60"
-              disabled={!hydrated}
+              placeholder="Nama penanggung jawab kasir"
+              className="h-9 text-xs border-zinc-200"
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Inventory Settings */}
-      <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10">
-              <Bell className="h-4 w-4 text-amber-500" />
+      <Card className="border border-zinc-200/80 bg-white shadow-sm">
+        <CardHeader className="pb-3 border-b border-zinc-100">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-100 text-zinc-700">
+              <Bell className="h-4 w-4" />
             </div>
             <div>
-              <CardTitle className="text-base">Peringatan Stok</CardTitle>
-              <CardDescription className="text-sm">
-                Batas minimum stok sebelum peringatan muncul
+              <CardTitle className="text-sm font-semibold text-zinc-900">
+                Peringatan Stok Rendah
+              </CardTitle>
+              <CardDescription className="text-xs text-zinc-500">
+                Tentukan batas ambang stok produk sebelum status berubah menjadi peringatan
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <div className="space-y-1.5 max-w-xs">
-            <Label htmlFor="low-stock">Batas Stok Rendah (pcs)</Label>
+            <Label htmlFor="low-stock" className="text-xs font-medium text-zinc-700">
+              Ambang Batas Peringatan (pcs)
+            </Label>
             <Input
               id="low-stock"
               type="number"
               min={1}
               value={lowStockThreshold}
               onChange={(e) => setLowStockThreshold(e.target.value)}
-              className="bg-background/60"
-              disabled={!hydrated}
+              className="h-9 text-xs font-mono border-zinc-200"
             />
-            <p className="text-xs text-muted-foreground">
-              Produk dengan stok di bawah angka ini akan ditandai sebagai peringatan
+            <p className="text-[11px] text-zinc-400">
+              Produk dengan sisa stok di bawah angka ini akan otomatis ditandai di dashboard
             </p>
           </div>
         </CardContent>
       </Card>
 
       {/* Printer Settings */}
-      <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10">
-              <Printer className="h-4 w-4 text-blue-500" />
+      <Card className="border border-zinc-200/80 bg-white shadow-sm">
+        <CardHeader className="pb-3 border-b border-zinc-100">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-100 text-zinc-700">
+              <Printer className="h-4 w-4" />
             </div>
             <div>
-              <CardTitle className="text-base">Printer Struk</CardTitle>
-              <CardDescription className="text-sm">
-                Konfigurasi printer thermal/kasir
+              <CardTitle className="text-sm font-semibold text-zinc-900">
+                Konfigurasi Cetak Struk
+              </CardTitle>
+              <CardDescription className="text-xs text-zinc-500">
+                Integrasi printer kasir termal 58mm / 80mm
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between rounded-xl border border-border/40 bg-muted/30 p-4">
+        <CardContent className="space-y-3 pt-4">
+          <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50/60 p-3">
             <div>
-              <p className="text-sm font-medium">Cetak Otomatis</p>
-              <p className="text-xs text-muted-foreground">
-                Printer akan terbuka otomatis setelah transaksi
+              <p className="text-xs font-semibold text-zinc-800">Mode Cetak Langsung</p>
+              <p className="text-[11px] text-zinc-500">
+                Menggunakan standar Web Print API bawaan browser untuk semua jenis printer
               </p>
             </div>
-            <Badge variant="secondary" className="text-xs">Dialog Browser</Badge>
+            <span className="text-[10px] font-semibold bg-white border border-zinc-200 text-zinc-700 px-2 py-0.5 rounded">
+              Universal
+            </span>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Ngasir menggunakan dialog cetak bawaan browser untuk mendukung printer thermal tanpa instalasi driver tambahan.
-          </p>
+
           <Button
             variant="outline"
             size="sm"
             onClick={() => window.print()}
-            className="text-xs"
+            className="h-8 text-xs border-zinc-200"
           >
-            <Printer className="mr-2 h-3.5 w-3.5" />
-            Test Cetak
+            <Printer className="mr-1.5 h-3.5 w-3.5" />
+            Uji Sambungan Printer
           </Button>
         </CardContent>
       </Card>
 
       {/* Account & Security */}
-      <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10">
-              <Shield className="h-4 w-4 text-rose-500" />
+      <Card className="border border-zinc-200/80 bg-white shadow-sm">
+        <CardHeader className="pb-3 border-b border-zinc-100">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-100 text-zinc-700">
+              <Shield className="h-4 w-4" />
             </div>
             <div>
-              <CardTitle className="text-base">Akun &amp; Keamanan</CardTitle>
-              <CardDescription className="text-sm">
-                Kelola akun dan password Anda
+              <CardTitle className="text-sm font-semibold text-zinc-900">
+                Keamanan Akun
+              </CardTitle>
+              <CardDescription className="text-xs text-zinc-500">
+                Kredensial akses terminal kasir
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="divide-y divide-border/40">
+        <CardContent className="divide-y divide-zinc-100 p-0">
           <button
             onClick={openChangePassword}
-            className="flex w-full items-center justify-between py-3.5 text-left hover:text-foreground text-sm transition-colors"
+            className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-zinc-50 transition-colors"
           >
             <div>
-              <p className="font-medium">Ganti Password</p>
-              <p className="text-xs text-muted-foreground">Ubah password masuk Anda</p>
+              <p className="text-xs font-semibold text-zinc-800">Ubah Kata Sandi</p>
+              <p className="text-[11px] text-zinc-500">Ganti password akses untuk akun ini</p>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="h-4 w-4 text-zinc-400" />
           </button>
+
           <button
             onClick={() => setShowComingSoon(true)}
-            className="flex w-full items-center justify-between py-3.5 text-left hover:text-foreground text-sm transition-colors"
+            className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-zinc-50 transition-colors"
           >
             <div>
-              <p className="font-medium">Kelola Pengguna</p>
-              <p className="text-xs text-muted-foreground">Tambah atau hapus akun kasir</p>
+              <p className="text-xs font-semibold text-zinc-800">Hak Akses Kasir</p>
+              <p className="text-[11px] text-zinc-500">Pengaturan multi-karyawan & kasir bergilir</p>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="h-4 w-4 text-zinc-400" />
           </button>
+
           <button
             onClick={async () => {
               try {
@@ -320,11 +323,11 @@ export default function SettingsPage() {
                 window.location.href = "/login";
               }
             }}
-            className="flex w-full items-center justify-between py-3.5 text-left text-rose-600 dark:text-rose-400 hover:text-rose-700 text-sm transition-colors"
+            className="flex w-full items-center justify-between px-5 py-3.5 text-left text-rose-700 hover:bg-rose-50 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <LogOut className="h-4 w-4" />
-              <p className="font-medium">Keluar dari Akun</p>
+              <LogOut className="h-3.5 w-3.5" />
+              <p className="text-xs font-semibold">Keluar dari Terminal (Sign Out)</p>
             </div>
             <ChevronRight className="h-4 w-4 opacity-50" />
           </button>
@@ -332,109 +335,111 @@ export default function SettingsPage() {
       </Card>
 
       {/* Save Button */}
-      <div className="flex justify-end pb-4">
+      <div className="flex justify-end pb-6">
         <Button
           id="save-settings-btn"
           onClick={handleSave}
-          disabled={!hydrated}
-          className={`transition-all duration-300 ${
+          className={`h-9 px-4 text-xs font-semibold rounded-lg shadow-sm transition-colors ${
             saved
-              ? "bg-emerald-600 hover:bg-emerald-600 text-white"
-              : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25"
+              ? "bg-emerald-700 hover:bg-emerald-800 text-white"
+              : "bg-zinc-900 hover:bg-zinc-800 text-white"
           }`}
         >
-          <Save className="mr-2 h-4 w-4" />
-          {saved ? "Tersimpan ✓" : "Simpan Pengaturan"}
+          <Save className="mr-1.5 h-3.5 w-3.5" />
+          {saved ? "Pengaturan Berhasil Disimpan ✓" : "Simpan Perubahan"}
         </Button>
       </div>
 
-      {/* ── Change Password Dialog ── */}
+      {/* Change Password Dialog */}
       <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10">
-                <Lock className="h-4 w-4 text-rose-500" />
+        <DialogContent className="max-w-sm p-5">
+          <DialogHeader className="pb-2 border-b border-zinc-100">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-100 text-zinc-700">
+                <Lock className="h-4 w-4" />
               </div>
               <div>
-                <DialogTitle>Ganti Password</DialogTitle>
-                <DialogDescription className="text-xs mt-0.5">
-                  Masukkan password baru Anda
+                <DialogTitle className="text-sm font-bold text-zinc-900">
+                  Ubah Kata Sandi
+                </DialogTitle>
+                <DialogDescription className="text-xs text-zinc-500">
+                  Masukkan kata sandi baru untuk login terminal
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
           {passwordSuccess ? (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10">
-                <CheckCircle2 className="h-7 w-7 text-emerald-500" />
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                <CheckCircle2 className="h-6 w-6" />
               </div>
-              <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                Password berhasil diubah!
+              <p className="text-xs font-semibold text-emerald-800">
+                Kata sandi berhasil diperbarui!
               </p>
             </div>
           ) : (
-            <div className="space-y-4 pt-1">
-              {/* New password */}
+            <div className="space-y-3.5 pt-2">
               <div className="space-y-1.5">
-                <Label htmlFor="cp-new">Password Baru</Label>
+                <Label htmlFor="cp-new" className="text-xs font-medium text-zinc-700">
+                  Kata Sandi Baru
+                </Label>
                 <div className="relative">
                   <Input
                     id="cp-new"
                     type={showNew ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Min. 8 karakter"
-                    className="pr-10"
+                    placeholder="Minimal 8 karakter"
+                    className="h-9 text-xs pr-9 border-zinc-200"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNew((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700"
                   >
-                    {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showNew ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </button>
                 </div>
               </div>
 
-              {/* Confirm password */}
               <div className="space-y-1.5">
-                <Label htmlFor="cp-confirm">Konfirmasi Password Baru</Label>
+                <Label htmlFor="cp-confirm" className="text-xs font-medium text-zinc-700">
+                  Ulangi Kata Sandi Baru
+                </Label>
                 <div className="relative">
                   <Input
                     id="cp-confirm"
                     type={showConfirm ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Ulangi password baru"
-                    className="pr-10"
-                    onKeyDown={(e) => { if (e.key === "Enter") handleChangePassword(); }}
+                    placeholder="Ulangi kata sandi"
+                    className="h-9 text-xs pr-9 border-zinc-200"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleChangePassword();
+                    }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirm((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700"
                   >
-                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showConfirm ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </button>
                 </div>
               </div>
 
-              {/* Error */}
               {passwordError && (
-                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2.5 text-destructive">
-                  <AlertCircle className="h-4 w-4 flex-none" />
-                  <p className="text-xs">{passwordError}</p>
+                <div className="rounded-lg bg-rose-50 border border-rose-200 p-2 text-xs text-rose-700 flex items-center gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5 flex-none" />
+                  <span>{passwordError}</span>
                 </div>
               )}
 
-              <Separator />
-
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-2 border-t border-zinc-100">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 h-9 text-xs border-zinc-200"
                   onClick={() => setShowChangePassword(false)}
                   disabled={passwordLoading}
                 >
@@ -442,16 +447,14 @@ export default function SettingsPage() {
                 </Button>
                 <Button
                   id="confirm-change-password-btn"
-                  className="flex-1 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white"
+                  className="flex-1 h-9 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded-lg"
                   onClick={handleChangePassword}
                   disabled={passwordLoading}
                 >
                   {passwordLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Lock className="h-4 w-4 mr-2" />
-                  )}
-                  {passwordLoading ? "Menyimpan..." : "Ganti Password"}
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  ) : null}
+                  Simpan Kata Sandi
                 </Button>
               </div>
             </div>
@@ -459,38 +462,29 @@ export default function SettingsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Coming Soon Dialog ── */}
+      {/* Coming Soon Dialog */}
       <Dialog open={showComingSoon} onOpenChange={setShowComingSoon}>
-        <DialogContent className="max-w-sm text-center">
-          <DialogHeader>
-            <div className="flex flex-col items-center gap-3 py-4">
-              <div className="relative">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-600/20">
-                  <Users className="h-8 w-8 text-violet-500" />
-                </div>
-                <div className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg">
-                  <Sparkles className="h-3 w-3 text-white" />
-                </div>
-              </div>
-              <div>
-                <DialogTitle className="text-lg">Kelola Pengguna</DialogTitle>
-                <DialogDescription className="mt-1.5 text-sm leading-relaxed">
-                  Fitur manajemen akun kasir sedang dalam pengembangan dan akan segera hadir.
-                </DialogDescription>
-              </div>
-              <Badge className="bg-violet-500/15 text-violet-700 dark:text-violet-400 border-0 px-3 py-1 text-xs font-semibold">
-                <Sparkles className="h-3 w-3 mr-1.5" />
-                Segera Hadir
-              </Badge>
+        <DialogContent className="max-w-xs text-center p-5">
+          <div className="flex flex-col items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700">
+              <Users className="h-5 w-5" />
             </div>
-          </DialogHeader>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => setShowComingSoon(false)}
-          >
-            Tutup
-          </Button>
+            <div>
+              <DialogTitle className="text-sm font-bold text-zinc-900">
+                Manajemen Staf Kasir
+              </DialogTitle>
+              <DialogDescription className="text-xs text-zinc-500 mt-1">
+                Fitur multi-kasir dengan pembagian hak akses sedang dalam tahap pembaruan.
+              </DialogDescription>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full h-8 text-xs border-zinc-200 mt-2"
+              onClick={() => setShowComingSoon(false)}
+            >
+              Tutup
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

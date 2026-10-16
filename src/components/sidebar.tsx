@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -16,9 +16,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
 const navItems = [
@@ -26,41 +25,55 @@ const navItems = [
     label: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
+    badge: null,
   },
   {
     label: "Kasir (POS)",
     href: "/pos",
     icon: ShoppingCart,
+    badge: "Utama",
   },
   {
     label: "Inventaris",
     href: "/inventory",
     icon: Package,
+    badge: null,
   },
   {
     label: "Riwayat",
     href: "/transactions",
     icon: Receipt,
+    badge: null,
   },
 ];
 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { data: session } = authClient.useSession();
-  const [ownerName, setOwnerName] = useState<string | null>(null);
-
-  useEffect(() => {
+  const [storeName] = useState<string>(() => {
+    if (typeof window === "undefined") return "Toko Kasir";
     try {
       const raw = localStorage.getItem("ngasir_settings");
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed.ownerName) setOwnerName(parsed.ownerName);
+        if (parsed.storeName) return parsed.storeName;
       }
     } catch { /* ignore */ }
-  }, []);
+    return "Toko Kasir";
+  });
+  const [ownerName] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("ngasir_settings");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.ownerName) return parsed.ownerName;
+      }
+    } catch { /* ignore */ }
+    return null;
+  });
 
-  const userName = ownerName || session?.user?.name || "Pengguna";
+  const userName = ownerName || session?.user?.name || "Kasir";
   const userInitials = userName
     .split(" ")
     .map((n) => n[0])
@@ -83,25 +96,37 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Logo / Brand */}
-      <div className="flex items-center gap-3 px-6 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25">
-          <Store className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold tracking-tight">Ngasir</h1>
-          <p className="text-xs text-muted-foreground">Point of Sale</p>
+    <div className="flex h-full flex-col bg-zinc-50/80 border-r border-zinc-200">
+      {/* Brand Header */}
+      <div className="px-5 py-4 border-b border-zinc-200/80">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 text-white shadow-sm ring-1 ring-zinc-800">
+            <Store className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-sm font-semibold tracking-tight text-zinc-900 truncate">
+                {storeName}
+              </h1>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="text-[11px] font-medium text-zinc-500 tracking-tight">
+                POS Aktif · Online
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <Separator className="mx-4 w-auto" />
-
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
-        <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Menu
-        </p>
+        <div className="px-3 pb-2">
+          <p className="text-[11px] font-semibold tracking-wider uppercase text-zinc-400">
+            Menu Kasir
+          </p>
+        </div>
+
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -109,65 +134,86 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
               key={item.href}
               href={item.href}
               onClick={onNavClick}
-              className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+              className={`group flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-medium transition-all ${
                 isActive
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-sm"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? "bg-zinc-900 text-white shadow-sm"
+                  : "text-zinc-600 hover:bg-zinc-200/60 hover:text-zinc-900"
               }`}
             >
-              <item.icon
-                className={`h-[18px] w-[18px] transition-colors ${
-                  isActive
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-muted-foreground group-hover:text-foreground"
-                }`}
-              />
-              {item.label}
-              {isActive && (
-                <div className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <div className="flex items-center gap-2.5">
+                <item.icon
+                  className={`h-4 w-4 transition-colors ${
+                    isActive ? "text-white" : "text-zinc-400 group-hover:text-zinc-700"
+                  }`}
+                />
+                <span>{item.label}</span>
+              </div>
+              {item.badge && (
+                <span
+                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                    isActive
+                      ? "bg-zinc-800 text-zinc-200"
+                      : "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
+                  }`}
+                >
+                  {item.badge}
+                </span>
               )}
             </Link>
           );
         })}
-      </nav>
 
-      <Separator className="mx-4 w-auto" />
+        <div className="pt-4 px-3 pb-2">
+          <p className="text-[11px] font-semibold tracking-wider uppercase text-zinc-400">
+            Sistem
+          </p>
+        </div>
 
-      {/* Bottom section */}
-      <div className="space-y-1 px-3 py-3">
         <Link
           href="/settings"
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground"
+          onClick={onNavClick}
+          className={`group flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs font-medium transition-all ${
+            pathname === "/settings"
+              ? "bg-zinc-900 text-white shadow-sm"
+              : "text-zinc-600 hover:bg-zinc-200/60 hover:text-zinc-900"
+          }`}
         >
-          <Settings className="h-[18px] w-[18px]" />
-          Pengaturan
+          <Settings
+            className={`h-4 w-4 transition-colors ${
+              pathname === "/settings" ? "text-white" : "text-zinc-400 group-hover:text-zinc-700"
+            }`}
+          />
+          <span>Pengaturan Toko</span>
         </Link>
-      </div>
+      </nav>
 
-      {/* User Profile */}
-      <div className="border-t border-border p-4">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-xs text-white font-semibold">
-              {userInitials}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate">{userName}</p>
-            <p className="text-xs text-muted-foreground">{session?.user?.email || "Pemilik Toko"}</p>
+      {/* User Session Footer */}
+      <div className="p-3 border-t border-zinc-200/70 bg-white/60">
+        <div className="flex items-center justify-between gap-2 rounded-lg p-2 transition-colors">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Avatar className="h-8 w-8 ring-1 ring-zinc-200">
+              <AvatarFallback className="bg-zinc-100 text-zinc-800 text-[11px] font-semibold">
+                {userInitials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-zinc-900 truncate">{userName}</p>
+              <p className="text-[11px] text-zinc-500 truncate">{session?.user?.email || "Admin Kasir"}</p>
+            </div>
           </div>
+
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            className="h-8 w-8 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors flex-none"
             onClick={handleLogout}
             disabled={loggingOut}
-            title="Keluar (Logout)"
+            title="Keluar dari Akun"
           >
             {loggingOut ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
             )}
           </Button>
         </div>
@@ -178,10 +224,8 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
 
 export function Sidebar() {
   return (
-    <aside className="hidden lg:flex lg:w-[260px] lg:flex-col lg:fixed lg:inset-y-0 z-50">
-      <div className="flex h-full flex-col border-r border-border bg-card/50 backdrop-blur-xl">
-        <SidebarContent />
-      </div>
+    <aside className="hidden lg:flex lg:w-[260px] lg:flex-col lg:fixed lg:inset-y-0 z-40">
+      <SidebarContent />
     </aside>
   );
 }
@@ -190,24 +234,27 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex lg:hidden items-center justify-between border-b border-border bg-card/80 backdrop-blur-xl px-4 py-3 sticky top-0 z-50">
-      <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
-          <Store className="h-4 w-4 text-white" />
+    <header className="flex lg:hidden items-center justify-between border-b border-zinc-200 bg-white/90 backdrop-blur-md px-4 py-2.5 sticky top-0 z-40">
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-900 text-white">
+          <Store className="h-3.5 w-3.5" />
         </div>
-        <h1 className="text-base font-bold">Ngasir</h1>
+        <span className="text-sm font-semibold tracking-tight text-zinc-900">Ngasir</span>
+        <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-medium border border-emerald-200/50">
+          POS
+        </span>
       </div>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger
-          render={<Button variant="ghost" size="icon" className="h-9 w-9" />}
+          render={<Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-700" />}
         >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         </SheetTrigger>
-        <SheetContent side="left" className="w-[280px] p-0" showCloseButton={false}>
-          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+        <SheetContent side="left" className="w-[260px] p-0 border-r border-zinc-200" showCloseButton={false}>
+          <SheetTitle className="sr-only">Navigasi Utama</SheetTitle>
           <SidebarContent onNavClick={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
-    </div>
+    </header>
   );
 }

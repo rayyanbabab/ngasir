@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Store, Eye, EyeOff, LogIn } from "lucide-react";
+import { Store, Eye, EyeOff, ArrowRight, ShieldCheck, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,11 +11,18 @@ import { authClient } from "@/lib/auth-client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isPending && session?.user) {
+      router.replace("/dashboard");
+    }
+  }, [session, isPending, router]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -26,73 +33,80 @@ export default function LoginPage() {
       return;
     }
 
-    setLoading(true);
+    try {
+      const { error: authError } = await authClient.signIn.email({
+        email: email.trim(),
+        password: password.trim(),
+      });
 
-    const { error: authError } = await authClient.signIn.email({
-      email: email.trim(),
-      password: password.trim(),
-    });
+      if (authError) {
+        setError(authError.message || "Email atau kata sandi tidak sesuai.");
+        setLoading(false);
+        return;
+      }
 
-    if (authError) {
-      setError(authError.message || "Email atau password salah.");
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal terhubung ke server. Periksa koneksi Anda.";
+      setError(msg);
       setLoading(false);
-      return;
     }
-
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12">
-      {/* Background decorations */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-emerald-500/5 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-teal-500/5 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-emerald-500/[0.03] blur-3xl" />
-      </div>
-
-      <div className="relative w-full max-w-[400px] space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        {/* Brand */}
-        <div className="text-center space-y-3">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/30 mx-auto">
-            <Store className="h-8 w-8 text-white" />
+    <div className="min-h-screen flex items-center justify-center bg-zinc-50/80 px-4 py-12">
+      <div className="w-full max-w-[380px] space-y-5">
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-900 text-white shadow-sm ring-1 ring-zinc-800 mx-auto">
+            <Store className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Ngasir</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Aplikasi Kasir UMKM · Point of Sale
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900">
+              Ngasir POS
+            </h1>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Sistem Kasir & Manajemen Toko UMKM
             </p>
           </div>
         </div>
 
         {/* Login Card */}
-        <Card className="border-border/50 bg-card/80 backdrop-blur-xl shadow-2xl shadow-black/10">
-          <CardHeader className="pb-4 pt-6 px-6">
-            <div className="space-y-1">
-              <h2 className="text-xl font-semibold tracking-tight">Masuk ke Akun</h2>
-              <p className="text-sm text-muted-foreground">
-                Masukkan kredensial Anda untuk melanjutkan
+        <Card className="border border-zinc-200 bg-white shadow-sm rounded-xl">
+          <CardHeader className="pb-4 pt-6 px-6 border-b border-zinc-100">
+            <div className="space-y-0.5">
+              <h2 className="text-sm font-semibold text-zinc-900">Masuk ke Terminal Kasir</h2>
+              <p className="text-xs text-zinc-500">
+                Gunakan kredensial akun toko Anda
               </p>
             </div>
           </CardHeader>
-          <CardContent className="px-6 pb-6">
+
+          <CardContent className="p-6">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-xs font-medium text-zinc-700">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="Masukkan email Anda"
+                  placeholder="admin@ngasir.id"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-background/60 h-10"
+                  className="h-9 text-xs bg-white border-zinc-200 focus-visible:ring-zinc-900"
                   disabled={loading}
                 />
               </div>
+
               <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-xs font-medium text-zinc-700">
+                    Kata Sandi
+                  </Label>
+                </div>
                 <div className="relative">
                   <Input
                     id="password"
@@ -101,26 +115,26 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-background/60 h-10 pr-10"
+                    className="h-9 text-xs bg-white border-zinc-200 pr-9 focus-visible:ring-zinc-900"
                     disabled={loading}
                   />
                   <button
                     type="button"
                     tabIndex={-1}
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="h-3.5 w-3.5" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-3.5 w-3.5" />
                     )}
                   </button>
                 </div>
               </div>
 
               {error && (
-                <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2.5 text-sm text-rose-600 dark:text-rose-400">
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 font-medium">
                   {error}
                 </div>
               )}
@@ -128,30 +142,64 @@ export default function LoginPage() {
               <Button
                 id="login-btn"
                 type="submit"
-                className="w-full h-10 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:shadow-emerald-500/40"
+                className="w-full h-9 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors mt-2"
                 disabled={loading}
               >
                 {loading ? (
                   <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                    Memverifikasi...
+                    <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    <span>Memverifikasi...</span>
                   </div>
                 ) : (
-                  <>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Masuk
-                  </>
+                  <div className="flex items-center justify-center gap-1.5 w-full">
+                    <span>Buka Kasir</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </div>
                 )}
               </Button>
+
+              {/* Sample Kredensial Demo */}
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50/70 p-3 text-xs space-y-2 mt-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-medium text-zinc-800">
+                    <KeyRound className="h-3.5 w-3.5 text-zinc-500" />
+                    <span>Akun Demo / Sample:</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail("admin@ngasir.id");
+                      setPassword("admin123");
+                      setError("");
+                    }}
+                    className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+                  >
+                    Gunakan Akun Ini
+                  </button>
+                </div>
+                <div className="font-mono text-[11px] bg-white rounded border border-zinc-200/80 p-2 text-zinc-600 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Email:</span>
+                    <span className="font-semibold text-zinc-700">admin@ngasir.id</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Sandi:</span>
+                    <span className="font-semibold text-zinc-700">admin123</span>
+                  </div>
+                </div>
+              </div>
             </form>
-
-
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-muted-foreground">
-          © 2026 Ngasir · Semua hak dilindungi
-        </p>
+        {/* Security badge & copyright */}
+        <div className="flex flex-col items-center gap-2 text-center text-[11px] text-zinc-400">
+          <div className="flex items-center gap-1.5 text-zinc-500">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Sesi Terenkripsi & Aman</span>
+          </div>
+          <p>© 2026 Ngasir · Point of Sale</p>
+        </div>
       </div>
     </div>
   );

@@ -7,6 +7,8 @@ export interface Product {
   price: number;
   stock: number;
   category: string;
+  image?: string | null;
+  barcode?: string | null;
   created_at?: string;
 }
 

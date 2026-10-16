@@ -25,13 +25,15 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const { name, price, stock, category } = body;
+    const { name, price, stock, category, image, barcode } = body;
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name.trim();
     if (price !== undefined) updateData.price = Number(price);
     if (stock !== undefined) updateData.stock = Number(stock);
     if (category !== undefined) updateData.category = category;
+    if (image !== undefined) updateData.image = image;
+    if (barcode !== undefined) updateData.barcode = barcode ? String(barcode).trim() : null;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "Tidak ada field yang diupdate" }, { status: 400 });

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { product } from "@/lib/db/schema";
-import { eq, like, and } from "drizzle-orm";
+import { eq, like, and, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { generateProductBarcode } from "@/lib/barcode";
 
 // Helper: validate session
 async function getSession() {
@@ -26,7 +27,8 @@ export async function GET(request: NextRequest) {
 
   const conditions = [];
   if (search) {
-    conditions.push(like(product.name, `%${search}%`));
+    const q = search.trim();
+    conditions.push(or(like(product.name, `%${q}%`), eq(product.barcode, q)));
   }
   if (category && category !== "Semua") {
     conditions.push(eq(product.category, category));
@@ -49,13 +51,18 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, price, stock, category } = body;
+    const { name, price, stock, category, image, barcode } = body;
 
     if (!name || price == null || stock == null) {
       return NextResponse.json(
         { error: "name, price, dan stock wajib diisi" },
         { status: 400 }
       );
+    }
+
+    let finalBarcode = barcode ? String(barcode).trim() : "";
+    if (!finalBarcode) {
+      finalBarcode = generateProductBarcode();
     }
 
     const [newProduct] = await db
@@ -65,6 +72,8 @@ export async function POST(request: NextRequest) {
         price: Number(price),
         stock: Number(stock),
         category: category || "Lainnya",
+        image: image || null,
+        barcode: finalBarcode,
       })
       .returning();
 

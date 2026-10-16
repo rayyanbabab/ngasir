@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { order, orderItem, product } from "@/lib/db/schema";
 import { eq, sql, desc, and, gte, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+
+export const dynamic = "force-dynamic";
 
 async function getSession() {
   return auth.api.getSession({
@@ -12,15 +14,16 @@ async function getSession() {
 }
 
 // GET /api/dashboard — aggregated stats for the dashboard
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const lowStockThreshold = parseInt(searchParams.get("lowStockThreshold") ?? "10", 10);
+    const { searchParams } = request.nextUrl;
+    const thresholdParam = parseInt(searchParams.get("lowStockThreshold") ?? "10", 10);
+    const lowStockThreshold = Number.isNaN(thresholdParam) ? 10 : thresholdParam;
 
     // ── Timezone setup ──
     const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;

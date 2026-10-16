@@ -112,6 +112,8 @@ export const product = pgTable("product", {
   price: integer("price").notNull(), // in IDR (Rupiah), no decimals
   stock: integer("stock").notNull().default(0),
   category: text("category").notNull().default("Lainnya"),
+  image: text("image"),
+  barcode: text("barcode"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`to_char(now() at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS')`),

@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import {
   TrendingUp,
   TrendingDown,
-  DollarSign,
   ShoppingBag,
-  BarChart3,
   Package,
   ArrowRight,
   AlertTriangle,
@@ -14,6 +12,8 @@ import {
   Banknote,
   QrCode,
   Loader2,
+  Receipt,
+  ChevronRight,
 } from "lucide-react";
 import {
   Card,
@@ -22,7 +22,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -53,27 +52,47 @@ import {
   type Transaction,
 } from "@/lib/mock-data";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 
 // Custom tooltip for charts
-function CustomBarTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
+function CustomBarTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+  label?: string;
+}) {
   if (active && payload && payload.length) {
     return (
-      <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-xl">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="text-sm font-semibold">{formatRupiah(payload[0].value)}</p>
+      <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 shadow-md">
+        <p className="text-[11px] font-medium text-zinc-500">{label}</p>
+        <p className="text-xs font-bold text-zinc-900 tabular-nums">
+          {formatRupiah(payload[0].value)}
+        </p>
       </div>
     );
   }
   return null;
 }
 
-function CustomAreaTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
+function CustomAreaTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+  label?: string;
+}) {
   if (active && payload && payload.length) {
     return (
-      <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-xl">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="text-sm font-semibold">{formatRupiah(payload[0].value)}</p>
+      <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 shadow-md">
+        <p className="text-[11px] font-medium text-zinc-500">{label}</p>
+        <p className="text-xs font-bold text-zinc-900 tabular-nums">
+          {formatRupiah(payload[0].value)}
+        </p>
       </div>
     );
   }
@@ -84,17 +103,17 @@ function CustomAreaTooltip({ active, payload, label }: { active?: boolean; paylo
 function PaymentBadge({ method }: { method: "CASH" | "QRIS" }) {
   if (method === "QRIS") {
     return (
-      <Badge className="bg-violet-500/15 text-violet-700 dark:text-violet-400 hover:bg-violet-500/20 border-0 text-xs px-2 py-0.5 gap-1">
+      <span className="inline-flex items-center gap-1 rounded border border-purple-200 bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-700">
         <QrCode className="h-3 w-3" />
         QRIS
-      </Badge>
+      </span>
     );
   }
   return (
-    <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-xs px-2 py-0.5 gap-1">
+    <span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
       <Banknote className="h-3 w-3" />
       Tunai
-    </Badge>
+    </span>
   );
 }
 
@@ -104,53 +123,48 @@ function StatCard({
   value,
   change,
   icon: Icon,
-  iconColor,
-  iconBg,
 }: {
   title: string;
   value: string;
   change: number;
   icon: React.ElementType;
-  prefix?: string;
-  iconColor: string;
-  iconBg: string;
 }) {
-  const isPositive = change >= 0;
+  const isPositive = change > 0;
+  const isZero = change === 0;
+
   return (
-    <Card className="group relative overflow-hidden border-border/50 bg-card/80 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:shadow-black/5 hover:border-border">
-      <div className="absolute inset-0 bg-gradient-to-br from-transparent to-transparent group-hover:from-emerald-500/[0.02] group-hover:to-teal-500/[0.02] transition-all duration-500" />
-      <CardContent className="p-5 relative">
-        {/* Top row: title + icon */}
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider leading-tight">
+    <Card className="border border-zinc-200/80 bg-white shadow-sm transition-all hover:border-zinc-300">
+      <CardContent className="p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
             {title}
-          </p>
-          <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg} transition-transform duration-300 group-hover:scale-110`}
-          >
-            <Icon className={`h-4 w-4 ${iconColor}`} />
+          </span>
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-100 text-zinc-700">
+            <Icon className="h-3.5 w-3.5" />
           </div>
         </div>
-        {/* Value */}
-        <p className="text-2xl font-bold tracking-tight mb-3">{value}</p>
-        {/* Change badge */}
+
+        <p className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 tabular-nums mb-2.5">
+          {value}
+        </p>
+
         <div className="flex items-center gap-1.5">
-          {isPositive ? (
-            <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5">
-              <TrendingUp className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                +{change}%
-              </span>
-            </div>
+          {isZero ? (
+            <span className="inline-flex items-center rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600">
+              0%
+            </span>
+          ) : isPositive ? (
+            <span className="inline-flex items-center gap-0.5 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+              <TrendingUp className="h-2.5 w-2.5" />
+              +{change}%
+            </span>
           ) : (
-            <div className="flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-0.5">
-              <TrendingDown className="h-3 w-3 text-rose-600 dark:text-rose-400" />
-              <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
-                {change}%
-              </span>
-            </div>
+            <span className="inline-flex items-center gap-0.5 rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
+              <TrendingDown className="h-2.5 w-2.5" />
+              {change}%
+            </span>
           )}
-          <span className="text-xs text-muted-foreground">vs kemarin</span>
+          <span className="text-[11px] text-zinc-400">vs hari kemarin</span>
         </div>
       </CardContent>
     </Card>
@@ -166,13 +180,16 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchDashboard = useCallback(async (isMounted = true) => {
     setLoading(true);
     setError(null);
     try {
@@ -180,30 +197,47 @@ export default function DashboardPage() {
         try {
           const raw = localStorage.getItem("ngasir_settings");
           return raw ? (JSON.parse(raw).lowStockThreshold ?? "10") : "10";
-        } catch { return "10"; }
+        } catch {
+          return "10";
+        }
       })();
       const res = await fetch(`/api/dashboard?lowStockThreshold=${threshold}`);
       if (res.status === 401) {
-        router.push("/login");
+        await authClient.signOut().catch(() => {});
+        window.location.href = "/login";
         return;
       }
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || "Gagal memuat data dashboard");
+        const message = errJson.error || "Gagal memuat data dashboard";
+        if (isMounted) {
+          setError(message);
+        }
+        return;
       }
       const json = await res.json();
-      setData(json);
+      if (isMounted) {
+        setData(json);
+      }
     } catch (err) {
-      console.error("Failed to fetch dashboard:", err);
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat memuat data");
+      if (isMounted) {
+        setError(
+          err instanceof Error ? err.message : "Terjadi kesalahan saat memuat data"
+        );
+      }
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
-    setMounted(true);
-    fetchDashboard();
+    let active = true;
+    fetchDashboard(active);
+    return () => {
+      active = false;
+    };
   }, [fetchDashboard]);
 
   const now = new Date();
@@ -224,24 +258,28 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500">
-          <AlertTriangle className="h-6 w-6" />
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-50 text-rose-600 border border-rose-200">
+          <AlertTriangle className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-sm font-semibold">{error || "Gagal memuat data dashboard"}</p>
-          <p className="text-xs text-muted-foreground mt-1">Silakan coba muat ulang halaman</p>
+          <p className="text-xs font-semibold text-zinc-900">
+            {error || "Gagal memuat data dashboard"}
+          </p>
+          <p className="text-[11px] text-zinc-500 mt-0.5">
+            Silakan coba muat ulang halaman
+          </p>
         </div>
         <Button
           onClick={() => fetchDashboard()}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+          className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs h-8 px-3"
           size="sm"
         >
           Coba Lagi
@@ -250,149 +288,143 @@ export default function DashboardPage() {
     );
   }
 
-  const { stats, hourlySalesData, monthlyTrendData, lowStockProducts, recentTransactions } = data;
+  const {
+    stats,
+    hourlySalesData,
+    monthlyTrendData,
+    lowStockProducts,
+    recentTransactions,
+  } = data;
 
   function formatTime(createdAt: string) {
     if (/^\d{2}:\d{2}$/.test(createdAt)) return createdAt;
     try {
       const d = new Date(createdAt.replace(" ", "T") + "Z");
-      return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      return d.toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     } catch {
       return createdAt;
     }
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-1 border-b border-zinc-200/70">
         <div>
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-            {greeting} 👋
-          </h1>
-          <p className="mt-1 text-base text-muted-foreground">{todayDate}</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold tracking-tight text-zinc-900 sm:text-xl">
+              {greeting}
+            </h1>
+            <span className="text-xs bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded font-medium border border-zinc-200">
+              Terminal POS
+            </span>
+          </div>
+          <p className="text-xs text-zinc-500 mt-0.5">{todayDate}</p>
         </div>
+
         <Link href="/pos">
-          <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:shadow-emerald-500/40 hover:scale-[1.02]">
-            <ShoppingBag className="mr-2 h-4 w-4" />
-            Mulai Transaksi
-            <ArrowRight className="ml-2 h-4 w-4" />
+          <Button className="h-9 px-4 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors">
+            <ShoppingBag className="mr-1.5 h-3.5 w-3.5" />
+            Buka Kasir Transaksi
+            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
           </Button>
         </Link>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Penjualan Hari Ini"
           value={formatRupiah(stats.todaySales)}
           change={stats.todaySalesChange}
-          icon={DollarSign}
-          iconColor="text-emerald-600 dark:text-emerald-400"
-          iconBg="bg-emerald-500/10"
+          icon={Banknote}
         />
         <StatCard
           title="Total Transaksi"
-          value={stats.todayTransactions.toString()}
+          value={`${stats.todayTransactions} order`}
           change={stats.todayTransactionsChange}
-          icon={ShoppingBag}
-          iconColor="text-blue-600 dark:text-blue-400"
-          iconBg="bg-blue-500/10"
+          icon={Receipt}
         />
         <StatCard
-          title="Rata-rata / Transaksi"
+          title="Rata-rata Order"
           value={formatRupiah(stats.averageOrderValue)}
           change={stats.averageOrderChange}
-          icon={BarChart3}
-          iconColor="text-violet-600 dark:text-violet-400"
-          iconBg="bg-violet-500/10"
+          icon={TrendingUp}
         />
         <StatCard
           title="Produk Terjual"
-          value={`${stats.productsSold} item`}
+          value={`${stats.productsSold} unit`}
           change={stats.productsSoldChange}
           icon={Package}
-          iconColor="text-amber-600 dark:text-amber-400"
-          iconBg="bg-amber-500/10"
         />
       </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Hourly Sales Bar Chart */}
-        <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-          <CardHeader className="pb-2">
+        <Card className="border border-zinc-200/80 bg-white shadow-sm">
+          <CardHeader className="pb-3 border-b border-zinc-100">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base font-semibold">
-                  Penjualan Hari Ini
+                <CardTitle className="text-sm font-semibold text-zinc-900">
+                  Arus Penjualan Hari Ini
                 </CardTitle>
-                <CardDescription className="text-sm">
-                  Pendapatan per jam
+                <CardDescription className="text-xs text-zinc-500">
+                  Distribusi omset per jam operasional
                 </CardDescription>
               </div>
-              <Badge variant="secondary" className="text-xs font-medium">
-                Live
-              </Badge>
+              <span className="flex items-center gap-1.5 rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                Live Feed
+              </span>
             </div>
           </CardHeader>
-          <CardContent className="pt-0">
-            <div className="h-[220px] sm:h-[280px] w-full overflow-hidden">
+          <CardContent className="pt-4">
+            <div className="h-[230px] w-full overflow-hidden">
               {!mounted ? null : hourlySalesData.some((d) => d.sales > 0) ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={hourlySalesData} barCategoryGap="20%">
                     <CartesianGrid
                       strokeDasharray="3 3"
                       vertical={false}
-                      stroke="#e5e7eb"
+                      stroke="#f1f5f9"
                     />
                     <XAxis
                       dataKey="hour"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      tick={{ fontSize: 10, fill: "#94a3b8" }}
                     />
                     <YAxis
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      tick={{ fontSize: 10, fill: "#94a3b8" }}
                       tickFormatter={(v) => formatCompact(v)}
                     />
                     <Tooltip
                       content={<CustomBarTooltip />}
-                      cursor={{ fill: "rgba(0,0,0,0.05)", radius: 4 }}
+                      cursor={{ fill: "rgba(0,0,0,0.03)", radius: 4 }}
                     />
                     <Bar
                       dataKey="sales"
-                      fill="url(#barGradient)"
-                      radius={[6, 6, 0, 0]}
-                      maxBarSize={40}
+                      fill="#047857"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={36}
                     />
-                    <defs>
-                      <linearGradient
-                        id="barGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0%"
-                          stopColor="rgb(16, 185, 129)"
-                          stopOpacity={1}
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor="rgb(20, 184, 166)"
-                          stopOpacity={0.6}
-                        />
-                      </linearGradient>
-                    </defs>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                  Belum ada transaksi hari ini
+                <div className="flex h-full flex-col items-center justify-center text-center text-zinc-400">
+                  <Receipt className="h-8 w-8 mb-1.5 opacity-30" />
+                  <p className="text-xs font-medium text-zinc-600">
+                    Belum ada transaksi tercatat hari ini
+                  </p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Transaksi dari menu kasir akan muncul di sini secara real-time
+                  </p>
                 </div>
               )}
             </div>
@@ -400,76 +432,59 @@ export default function DashboardPage() {
         </Card>
 
         {/* Monthly Trend Area Chart */}
-        <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-          <CardHeader className="pb-2">
+        <Card className="border border-zinc-200/80 bg-white shadow-sm">
+          <CardHeader className="pb-3 border-b border-zinc-100">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base font-semibold">
-                  Tren Penjualan Bulanan
+                <CardTitle className="text-sm font-semibold text-zinc-900">
+                  Tren Penjualan 30 Hari
                 </CardTitle>
-                <CardDescription className="text-sm">
-                  30 hari terakhir
+                <CardDescription className="text-xs text-zinc-500">
+                  Pergerakan omset harian toko
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1">
-                <TrendingUp className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  +{stats.todaySalesChange}%
+              <div className="text-right">
+                <span className="text-[10px] font-medium text-zinc-500">
+                  Total Periode:
+                </span>
+                <span className="text-xs font-bold text-zinc-900 ml-1 tabular-nums">
+                  {formatRupiah(monthlyTrendData.reduce((acc, d) => acc + d.sales, 0))}
                 </span>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-0">
-            <div className="h-[220px] sm:h-[280px] w-full overflow-hidden">
+          <CardContent className="pt-4">
+            <div className="h-[230px] w-full overflow-hidden">
               {mounted ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={monthlyTrendData}>
                     <CartesianGrid
                       strokeDasharray="3 3"
                       vertical={false}
-                      stroke="#e5e7eb"
+                      stroke="#f1f5f9"
                     />
                     <XAxis
                       dataKey="date"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 10, fill: "#9ca3af" }}
-                      interval={4}
+                      tick={{ fontSize: 10, fill: "#94a3b8" }}
+                      interval={5}
                     />
                     <YAxis
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      tick={{ fontSize: 10, fill: "#94a3b8" }}
                       tickFormatter={(v) => formatCompact(v)}
                     />
                     <Tooltip content={<CustomAreaTooltip />} />
                     <Area
                       type="monotone"
                       dataKey="sales"
-                      stroke="rgb(16, 185, 129)"
+                      stroke="#0f766e"
                       strokeWidth={2}
-                      fill="url(#areaGradient)"
+                      fillOpacity={0.12}
+                      fill="#0f766e"
                     />
-                    <defs>
-                      <linearGradient
-                        id="areaGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0%"
-                          stopColor="rgb(16, 185, 129)"
-                          stopOpacity={0.3}
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor="rgb(16, 185, 129)"
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
-                    </defs>
                   </AreaChart>
                 </ResponsiveContainer>
               ) : null}
@@ -478,82 +493,96 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Bottom Row */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
+      {/* Bottom Row: Low Stock Alert & Recent Transactions */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Low Stock Alert */}
-        <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-          <CardHeader className="pb-3">
+        <Card className="border border-zinc-200/80 bg-white shadow-sm flex flex-col">
+          <CardHeader className="pb-3 border-b border-zinc-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-50 text-amber-700 border border-amber-200/60">
+                  <AlertTriangle className="h-3.5 w-3.5" />
                 </div>
                 <div>
-                  <CardTitle className="text-base font-semibold">
-                    Peringatan Stok
+                  <CardTitle className="text-sm font-semibold text-zinc-900">
+                    Peringatan Stok Produk
                   </CardTitle>
-                  <CardDescription className="text-sm">
-                    Stok menipis (&lt; {(() => { try { const r = localStorage.getItem("ngasir_settings"); return r ? (JSON.parse(r).lowStockThreshold ?? 10) : 10; } catch { return 10; } })()} item)
+                  <CardDescription className="text-xs text-zinc-500">
+                    Stok di bawah batas minimum
                   </CardDescription>
                 </div>
               </div>
-              <Badge variant="destructive" className="text-xs">
-                {lowStockProducts.length} produk
-              </Badge>
+
+              <Link href="/inventory">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-zinc-500 hover:text-zinc-900"
+                >
+                  Kelola Stok
+                  <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                </Button>
+              </Link>
             </div>
           </CardHeader>
-          <CardContent className="pt-0">
+
+          <CardContent className="p-0 flex-1">
             <Table>
               <TableHeader>
-                <TableRow className="border-border/50 hover:bg-transparent">
-                  <TableHead className="text-sm font-medium h-8">Produk</TableHead>
-                  <TableHead className="text-sm font-medium text-right h-8">Sisa Stok</TableHead>
-                  <TableHead className="text-sm font-medium text-right h-8">Status</TableHead>
+                <TableRow className="border-b border-zinc-100 bg-zinc-50/50">
+                  <TableHead className="text-xs font-semibold text-zinc-500 h-8">
+                    Nama Produk
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold text-zinc-500 text-right h-8">
+                    Sisa Stok
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold text-zinc-500 text-right h-8">
+                    Status
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {lowStockProducts.map((product) => (
                   <TableRow
                     key={product.id}
-                    className="border-border/30 hover:bg-muted/50 transition-colors"
+                    className="border-b border-zinc-100 hover:bg-zinc-50/60"
                   >
                     <TableCell className="py-2.5">
                       <div>
-                        <p className="text-sm font-medium">{product.name}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs font-medium text-zinc-900 leading-tight">
+                          {product.name}
+                        </p>
+                        <p className="text-[11px] text-zinc-400">
                           {product.category}
                         </p>
                       </div>
                     </TableCell>
                     <TableCell className="text-right py-2.5">
-                      <span className="text-sm font-semibold tabular-nums">
+                      <span className="text-xs font-bold text-zinc-900 tabular-nums font-mono">
                         {product.stock}
                       </span>
                     </TableCell>
                     <TableCell className="text-right py-2.5">
                       {product.stock <= 3 ? (
-                        <Badge
-                          variant="destructive"
-                          className="text-xs px-2 py-0.5"
-                        >
+                        <span className="inline-block rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
                           Kritis
-                        </Badge>
-                      ) : product.stock <= 5 ? (
-                        <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 border-0 text-xs px-2 py-0.5">
-                          Rendah
-                        </Badge>
+                        </span>
                       ) : (
-                        <Badge className="bg-orange-500/15 text-orange-700 dark:text-orange-400 hover:bg-orange-500/20 border-0 text-xs px-2 py-0.5">
-                          Perhatian
-                        </Badge>
+                        <span className="inline-block rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                          Rendah
+                        </span>
                       )}
                     </TableCell>
                   </TableRow>
                 ))}
+
                 {lowStockProducts.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground text-sm">
-                      Semua stok aman ✓
+                    <TableCell
+                      colSpan={3}
+                      className="text-center py-8 text-zinc-400 text-xs"
+                    >
+                      Semua stok produk saat ini dalam batas aman.
                     </TableCell>
                   </TableRow>
                 )}
@@ -563,81 +592,80 @@ export default function DashboardPage() {
         </Card>
 
         {/* Recent Transactions */}
-        <Card className="border-border/50 bg-card/80 backdrop-blur-sm flex flex-col">
-          <CardHeader className="pb-3">
+        <Card className="border border-zinc-200/80 bg-white shadow-sm flex flex-col">
+          <CardHeader className="pb-3 border-b border-zinc-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                  <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-100 text-zinc-700">
+                  <Clock className="h-3.5 w-3.5" />
                 </div>
                 <div>
-                  <CardTitle className="text-base font-semibold">
+                  <CardTitle className="text-sm font-semibold text-zinc-900">
                     Transaksi Terakhir
                   </CardTitle>
-                  <CardDescription className="text-sm">
-                    10 transaksi terbaru
+                  <CardDescription className="text-xs text-zinc-500">
+                    Pesanan yang baru diselesaikan
                   </CardDescription>
                 </div>
               </div>
+
               <Link href="/transactions">
-                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground">
-                  Lihat Semua
-                  <ArrowRight className="ml-1 h-3 w-3" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-zinc-500 hover:text-zinc-900"
+                >
+                  Semua Riwayat
+                  <ChevronRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               </Link>
             </div>
           </CardHeader>
-          <CardContent className="pt-0 flex-1 flex flex-col min-h-0">
-            {/* Header row — hidden on mobile, shown on sm+ */}
-            <div className="hidden sm:grid sm:grid-cols-[1.8fr_0.9fr_0.9fr_1.5fr_1.1fr] px-1 pb-2 border-b border-border/50">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">ID</span>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Waktu</span>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">Item</span>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">Total</span>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">Metode</span>
-            </div>
-            {/* Body */}
-            <div className="flex-1 flex flex-col divide-y divide-border/30 min-h-0">
+
+          <CardContent className="p-0 flex-1">
+            <div className="divide-y divide-zinc-100">
               {recentTransactions.map((tx) => (
                 <div
                   key={tx.id}
-                  className="min-h-[44px] lg:flex-1 flex items-center px-1 hover:bg-muted/50 transition-colors rounded"
+                  className="flex items-center justify-between p-3 hover:bg-zinc-50/60 transition-colors"
                 >
-                  {/* Mobile layout: 2-line (ID+time kiri, total+badge kanan) */}
-                  <div className="flex w-full items-center gap-2 sm:hidden py-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-mono font-semibold truncate">{tx.id}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {formatTime(tx.createdAt)} · {tx.itemCount} item
-                      </p>
-                    </div>
-                    <div className="flex-none flex flex-col items-end gap-1">
-                      <span className="text-sm font-bold tabular-nums">{formatRupiah(tx.totalAmount)}</span>
+                  <div className="min-w-0 flex-1 pr-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-medium text-zinc-900 truncate">
+                        {tx.id}
+                      </span>
                       <PaymentBadge method={tx.paymentMethod} />
                     </div>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                      {formatTime(tx.createdAt)} · {tx.itemCount} barang
+                    </p>
                   </div>
-                  {/* Desktop layout: 5-column grid */}
-                  <div className="hidden sm:grid w-full grid-cols-[1.8fr_0.9fr_0.9fr_1.5fr_1.1fr] items-center">
-                    <span className="text-sm font-mono font-medium truncate pr-2">{tx.id}</span>
-                    <span className="text-sm text-muted-foreground tabular-nums">{formatTime(tx.createdAt)}</span>
-                    <span className="text-sm tabular-nums text-right">{tx.itemCount} item</span>
-                    <span className="text-sm font-semibold tabular-nums text-right">{formatRupiah(tx.totalAmount)}</span>
-                    <div className="flex justify-center">
-                      <PaymentBadge method={tx.paymentMethod} />
-                    </div>
+
+                  <div className="text-right flex-none">
+                    <p className="text-xs font-bold text-zinc-900 tabular-nums font-mono">
+                      {formatRupiah(tx.totalAmount)}
+                    </p>
+                    <span className="text-[10px] text-emerald-700 font-medium">
+                      Lunas
+                    </span>
                   </div>
                 </div>
               ))}
+
               {recentTransactions.length === 0 && (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-                  Belum ada transaksi
+                <div className="flex flex-col items-center justify-center py-10 text-center text-zinc-400">
+                  <Receipt className="h-8 w-8 mb-1.5 opacity-30" />
+                  <p className="text-xs font-medium text-zinc-600">
+                    Belum ada riwayat transaksi
+                  </p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Transaksi yang selesai akan tercatat otomatis
+                  </p>
                 </div>
               )}
             </div>
           </CardContent>
-
         </Card>
-
       </div>
     </div>
   );
